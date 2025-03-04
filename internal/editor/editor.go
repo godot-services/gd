@@ -38,7 +38,6 @@ func NewEditor(location string) (*editor, error) {
 		return nil, errors.New("invalid location: must be an executable")
 	}
 
-	// todo get version from godot executable
 	cmd := exec.Command(location, EditorCmdFlagVersion)
 	stdout, err := cmd.Output()
 	if err != nil {
