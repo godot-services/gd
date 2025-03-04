@@ -1,10 +1,11 @@
-package editor
+package editor_test
 
 import (
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/godot-services/gd/internal/editor"
 	"github.com/godot-services/gd/internal/editor/testdata"
 )
 
@@ -18,7 +19,7 @@ func TestNewEditor(t *testing.T) {
 
 	p := filepath.Join(cwd, "testdata", testdata.MockVersion)
 
-	_, err = NewEditor(p)
+	_, err = editor.NewEditor(p)
 	if err != nil {
 		t.Fatal(err)
 	}
