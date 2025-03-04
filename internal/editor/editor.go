@@ -19,6 +19,11 @@ const (
 	EditorCmdFlagVersion = "--version"
 )
 
+var (
+	ErrLocationMustBeAbs   = errors.New("invalid location: is not absolute")
+	ErrLocationMustBeAFile = errors.New("invalid location: must be a file")
+)
+
 type editor struct {
 	location string
 	version  string
@@ -26,7 +31,7 @@ type editor struct {
 
 func NewEditor(location string) (*editor, error) {
 	if !filepath.IsAbs(location) {
-		return nil, errors.New("invalid location: is not absolute")
+		return nil, ErrLocationMustBeAbs
 	}
 
 	fileInfo, err := os.Stat(location)
@@ -35,7 +40,7 @@ func NewEditor(location string) (*editor, error) {
 	}
 
 	if fileInfo.IsDir() {
-		return nil, errors.New("invalid location: must be an executable")
+		return nil, ErrLocationMustBeAFile
 	}
 
 	cmd := exec.Command(location, EditorCmdFlagVersion)
