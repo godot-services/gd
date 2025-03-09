@@ -20,7 +20,7 @@ jobs:
       - name: Install dependencies
         run: |
           go get .
-          go install github.com/vladopajic/go-test-coverage/v2@latest
+      #    go install github.com/vladopajic/go-test-coverage/v2@latest
       - name: Test with Go
         run: go test ./... -cover
       # - name: Test with Go and go-test-coverage
