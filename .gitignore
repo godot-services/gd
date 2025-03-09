@@ -27,3 +27,6 @@ go.work.sum
 # editors
 .idea
 .vscode
+
+# local customs
+.archive
