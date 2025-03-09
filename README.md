@@ -1,5 +1,7 @@
 # gd
 
+[![Test](https://github.com/godot-services/gd/actions/workflows/test.yml/badge.svg)](https://github.com/godot-services/gd/actions/workflows/test.yml)
+
 Godot Tool
 
 > [!NOTE]
