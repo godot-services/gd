@@ -2,7 +2,6 @@ package editor
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -24,6 +23,10 @@ var (
 	ErrLocationMustBeAFile = errors.New("invalid location: must be a file")
 )
 
+var shellGodotVersionCmd = func(location string) ([]byte, error) {
+	return exec.Command(location, EditorCmdFlagVersion).Output()
+}
+
 type editor struct {
 	location string
 	version  string
@@ -43,13 +46,10 @@ func NewEditor(location string) (*editor, error) {
 		return nil, ErrLocationMustBeAFile
 	}
 
-	cmd := exec.Command(location, EditorCmdFlagVersion)
-	stdout, err := cmd.Output()
+	version, err := shellGodotVersionCmd(location)
 	if err != nil {
-		fmt.Println(err.Error())
 		return nil, err
 	}
 
-	version := string(stdout)
-	return &editor{location, version}, nil
+	return &editor{location, string(version)}, nil
 }

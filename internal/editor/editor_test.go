@@ -1,39 +1,46 @@
-package editor_test
+package editor
 
 import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
-
-	"github.com/godot-services/gd/internal/editor"
-	"github.com/godot-services/gd/internal/editor/testdata"
 )
 
-func TestNewEditorWithValidLocation(t *testing.T) {
-	t.Parallel()
+func TestNewEditorWithLocationToExpectedExecutable(t *testing.T) {
+	// mock shell execution
+	origShellGodotVersionCmd := shellGodotVersionCmd
+	defer func() { shellGodotVersionCmd = origShellGodotVersionCmd }()
+	shellGodotVersionCmdCalled := false
+	shellGodotVersionCmd = func(location string) ([]byte, error) {
+		shellGodotVersionCmdCalled = true
+		return []byte("example-godot-version"), nil
+	}
 
-	cwd, err := os.Getwd()
+	dummyAsExecutable, err := currentFilename()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	p := filepath.Join(cwd, "testdata", testdata.MockVersion)
-
-	_, err = editor.NewEditor(p)
+	_, err = NewEditor(dummyAsExecutable)
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	if !shellGodotVersionCmdCalled {
+		t.Fatal("expected shellGodotVersionCmdCalled to be true")
 	}
 }
 
 func TestNewEditorWithNotAbsoluteLocation(t *testing.T) {
 	t.Parallel()
 
-	p := filepath.Join("testdata", testdata.MockVersion)
+	p := "example-godot-executable"
 
-	_, err := editor.NewEditor(p)
-	if err != editor.ErrLocationMustBeAbs {
-		t.Fatal("expected", editor.ErrLocationMustBeAbs)
+	_, err := NewEditor(p)
+	if err != ErrLocationMustBeAbs {
+		t.Fatal("expected", ErrLocationMustBeAbs)
 	}
 }
 
@@ -45,11 +52,9 @@ func TestNewEditorWithLocationToDir(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	p := filepath.Join(cwd, "testdata")
-
-	_, err = editor.NewEditor(p)
-	if err != editor.ErrLocationMustBeAFile {
-		t.Fatal("expected", editor.ErrLocationMustBeAFile, "but got", err)
+	_, err = NewEditor(cwd)
+	if err != ErrLocationMustBeAFile {
+		t.Fatal("expected", ErrLocationMustBeAFile, "but got", err)
 	}
 }
 
@@ -63,24 +68,41 @@ func TestNewEditorWithUnknownLocation(t *testing.T) {
 
 	p := filepath.Join(cwd, "unknown")
 
-	_, err = editor.NewEditor(p)
+	_, err = NewEditor(p)
 	if !errors.Is(err, os.ErrNotExist) {
 		t.Fatal("expected", os.ErrNotExist, "but got", err)
 	}
 }
 
 func TestNewEditorWithLocationToNonExecutable(t *testing.T) {
-	t.Parallel()
+	// mock shell execution
+	origShellGodotVersionCmd := shellGodotVersionCmd
+	defer func() { shellGodotVersionCmd = origShellGodotVersionCmd }()
+	shellGodotVersionCmdCalled := false
+	shellGodotVersionCmd = func(location string) ([]byte, error) {
+		shellGodotVersionCmdCalled = true
+		return nil, errors.New("expected error")
+	}
 
-	cwd, err := os.Getwd()
+	dummyAsNonExecutable, err := currentFilename()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	p := filepath.Join(cwd, "testdata", testdata.MockSimpleFile)
-
-	_, err = editor.NewEditor(p)
+	_, err = NewEditor(dummyAsNonExecutable)
 	if err == nil {
 		t.Fatal("expected execution error for non application but got no error")
 	}
+
+	if !shellGodotVersionCmdCalled {
+		t.Fatal("expected shellGodotVersionCmdCalled to be true")
+	}
+}
+
+func currentFilename() (string, error) {
+	_, filename, _, ok := runtime.Caller(1)
+	if !ok {
+		return "", errors.New("unable to get the current filename as mock for an existing file")
+	}
+	return filename, nil
 }
