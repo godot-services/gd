@@ -22,7 +22,7 @@ jobs:
           go get .
       #    go install github.com/vladopajic/go-test-coverage/v2@latest
       - name: Test with Go
-        run: go test ./... -cover
+        run: go test ./... -cover -v
       # - name: Test with Go and go-test-coverage
       #   run: go test ./... -coverprofile=./cover.out -covermode=atomic -coverpkg=./...
       # - name: Check test coverage
