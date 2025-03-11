@@ -1,15 +1,18 @@
 package godot
 
-import "github.com/spf13/viper"
+import (
+	"fmt"
+
+	"github.com/zieckey/goini"
+)
 
 type projectConfiguration struct {
-	configViper    *viper.Viper
 	targetFilePath string
 
-	PackageLicense *string `mapstructure:"package.license"`
-	PackagePrivate bool    `mapstructure:"package.private"`
-	PackageTitle   *string `mapstructure:"package.title"`
-	PackageVersion *string `mapstructure:"package.version"`
+	PackageTitle   *string
+	PackageVersion *string
+	PackageLicense *string
+	PackagePrivate bool
 
 	EditorVersion string
 
@@ -20,22 +23,17 @@ type projectConfiguration struct {
 type projectAssetConfiguration struct{}
 
 func NewProjectConfiguration(targetFilePath string) (*projectConfiguration, error) {
-	projectConfViper := viper.New()
-	projectConfViper.SetConfigFile(targetFilePath)
-	projectConfViper.SetConfigType("ini")
-	err := projectConfViper.ReadInConfig()
+	ini := goini.New()
+	err := ini.ParseFile(targetFilePath)
 	if err != nil {
+		fmt.Printf("parse INI file %v failed : %v\n", targetFilePath, err.Error())
 		return nil, err
 	}
+
+	fmt.Println(ini.GetAll())
 
 	config := &projectConfiguration{
-		configViper:    projectConfViper,
 		targetFilePath: targetFilePath,
-	}
-
-	err = viper.Unmarshal(&config)
-	if err != nil {
-		return nil, err
 	}
 
 	return config, nil
