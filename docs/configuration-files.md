@@ -17,7 +17,7 @@ Other types will maybe be checked later...maybe
 
 ```ini
 [package]
-title="My awesome package"
+name="My awesome package"
 version="1.0.0"
 
 [editor]
