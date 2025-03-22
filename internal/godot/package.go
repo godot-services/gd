@@ -2,11 +2,10 @@ package godot
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"regexp"
 	"strings"
-
-	"maps"
 
 	"gopkg.in/ini.v1"
 )
