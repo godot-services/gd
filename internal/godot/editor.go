@@ -27,12 +27,12 @@ var shellGodotVersionCmd = func(location string) ([]byte, error) {
 	return exec.Command(location, EditorCmdFlagVersion).Output()
 }
 
-type editor struct {
-	location string
-	version  string
+type Editor struct {
+	Location string
+	Version  string
 }
 
-func NewEditor(location string) (*editor, error) {
+func NewEditor(location string) (*Editor, error) {
 	if !filepath.IsAbs(location) {
 		return nil, ErrLocationMustBeAbs
 	}
@@ -51,5 +51,5 @@ func NewEditor(location string) (*editor, error) {
 		return nil, err
 	}
 
-	return &editor{location, string(version)}, nil
+	return &Editor{location, string(version)}, nil
 }
