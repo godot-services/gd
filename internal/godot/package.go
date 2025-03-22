@@ -54,9 +54,6 @@ func NewPackage(source []byte) (*Package, error) {
 
 	cfg.MapTo(&config)
 
-	fmt.Println(config.Package)
-	fmt.Println(config.Editor)
-
 	// 1️⃣ Standard mapping for "assets"-Section
 	config.Assets = mapAssets(cfg.Section(packageAssetSectionName))
 
@@ -67,9 +64,6 @@ func NewPackage(source []byte) (*Package, error) {
 	nestedAssets, nestedDevAssets := nestedSections(cfg.Sections())
 	maps.Copy(config.Assets, nestedAssets)
 	maps.Copy(config.DevAssets, nestedDevAssets)
-
-	fmt.Println(config.Assets)
-	fmt.Println(config.DevAssets)
 
 	return &config, nil
 }
