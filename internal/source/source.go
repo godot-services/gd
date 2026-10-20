@@ -86,6 +86,13 @@ func GitArchiveURL(repo, ref string) (string, error) {
 		return "", fmt.Errorf("%w: %s", ErrInsecureURL, repo)
 	}
 
+	// escape per segment: refs like feature/x keep their slash, # or ? cannot cut the URL
+	segments := strings.Split(ref, "/")
+	for i, seg := range segments {
+		segments[i] = url.PathEscape(seg)
+	}
+	ref = strings.Join(segments, "/")
+
 	switch u.Host {
 	case "github.com", "codeberg.org":
 		return repo + "/archive/" + ref + ".zip", nil
