@@ -44,11 +44,7 @@ func (l Library) Resolve(ctx context.Context, id string) (Resolved, error) {
 		return Resolved{}, err
 	}
 
-	client := l.Client
-	if client == nil {
-		client = http.DefaultClient
-	}
-	resp, err := client.Do(req)
+	resp, err := l.Client.Do(req)
 	if err != nil {
 		return Resolved{}, err
 	}
@@ -85,6 +81,13 @@ func GitArchiveURL(repo, ref string) (string, error) {
 	if u.Scheme != "https" {
 		return "", fmt.Errorf("%w: %s", ErrInsecureURL, repo)
 	}
+
+	// escape per segment: refs like feature/x keep their slash, # or ? cannot cut the URL
+	segments := strings.Split(ref, "/")
+	for i, seg := range segments {
+		segments[i] = url.PathEscape(seg)
+	}
+	ref = strings.Join(segments, "/")
 
 	switch u.Host {
 	case "github.com", "codeberg.org":

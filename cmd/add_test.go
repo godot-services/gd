@@ -139,3 +139,28 @@ func TestAddRejectsInvalidName(t *testing.T) {
 		t.Fatal("installed despite invalid name")
 	}
 }
+
+func TestAddRejectsVersionForLibraryAsset(t *testing.T) {
+	dir := newTestProject(t)
+	err := run(t, newFakeLibrary(t), "add", "1234", "--version", "1.0")
+	if !errors.Is(err, errVersionForLibrary) {
+		t.Fatal(err)
+	}
+	if exists(filepath.Join(dir, "addons")) {
+		t.Fatal("installed")
+	}
+}
+
+func TestAddRejectsNameOnlyInLock(t *testing.T) {
+	dir := newTestProject(t)
+	lib := newFakeLibrary(t)
+	godot.Lock{"dialogic_2": {Source: "library:1", URL: "u", SHA256: "s", Paths: []string{"addons/old"}}}.Save(dir)
+
+	if err := run(t, lib, "add", "1234"); !errors.Is(err, errNameInLock) {
+		t.Fatal(err)
+	}
+	lock, _ := godot.LoadLock(dir)
+	if lock["dialogic_2"].Source != "library:1" {
+		t.Fatalf("lock entry overwritten: %+v", lock)
+	}
+}

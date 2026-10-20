@@ -222,3 +222,66 @@ func TestExtractRejectsCommaInFolderName(t *testing.T) {
 		t.Fatalf("project not empty: %v", entries)
 	}
 }
+
+func TestExtractKeepsExecutableBit(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "asset.zip")
+	f, _ := os.Create(path)
+	w := zip.NewWriter(f)
+	for name, mode := range map[string]os.FileMode{"repo/addons/x/run.sh": 0o755, "repo/addons/x/a.gd": 0o600} {
+		h := &zip.FileHeader{Name: name, Method: zip.Deflate}
+		h.SetMode(mode)
+		fw, _ := w.CreateHeader(h)
+		fw.Write([]byte("x"))
+	}
+	w.Close()
+	f.Close()
+
+	project := t.TempDir()
+	if _, err := Extract(path, project, nil); err != nil {
+		t.Fatal(err)
+	}
+	for name, want := range map[string]os.FileMode{"run.sh": 0o755, "a.gd": 0o644} {
+		info, err := os.Stat(filepath.Join(project, "addons", "x", name))
+		if err != nil || info.Mode().Perm() != want {
+			t.Errorf("%s: %v %v, want %v", name, info.Mode().Perm(), err, want)
+		}
+	}
+}
+
+func TestFetchCachedUsesVerifiedCache(t *testing.T) {
+	hits := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits++
+		w.Write([]byte("zipdata"))
+	}))
+	t.Cleanup(srv.Close)
+	cache := t.TempDir()
+
+	path, sum, err := FetchCached(context.Background(), srv.Client(), srv.URL, "", cache)
+	if err != nil || path != filepath.Join(cache, sum+".zip") || readFile(t, path) != "zipdata" {
+		t.Fatal(path, sum, err)
+	}
+
+	if _, _, err := FetchCached(context.Background(), srv.Client(), srv.URL, sum, cache); err != nil || hits != 1 {
+		t.Fatalf("hits %d, %v", hits, err)
+	}
+
+	// a corrupted cache file is not trusted
+	os.WriteFile(path, []byte("corrupt"), 0o644)
+	if _, _, err := FetchCached(context.Background(), srv.Client(), srv.URL, sum, cache); err != nil || hits != 2 || readFile(t, path) != "zipdata" {
+		t.Fatalf("hits %d, %v", hits, err)
+	}
+}
+
+func TestExtractDanglingSymlinkIsForeign(t *testing.T) {
+	project := t.TempDir()
+	os.MkdirAll(filepath.Join(project, "addons"), 0o755)
+	if err := os.Symlink(filepath.Join(project, "missing"), filepath.Join(project, "addons", "x")); err != nil {
+		t.Skip(err)
+	}
+	z := makeZip(t, map[string]string{"repo/addons/x/a.gd": "a"})
+
+	if _, err := Extract(z, project, nil); !errors.Is(err, ErrForeignPath) {
+		t.Fatal(err)
+	}
+}

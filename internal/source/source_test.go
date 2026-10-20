@@ -91,3 +91,16 @@ func TestGitArchiveURLRequiresHTTPS(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestGitArchiveURLEscapesRef(t *testing.T) {
+	got, err := GitArchiveURL("https://github.com/a/b", "v1#x")
+	if err != nil || got != "https://github.com/a/b/archive/v1%23x.zip" {
+		t.Fatal(got, err)
+	}
+	if got, _ := GitArchiveURL("https://github.com/a/b", "feature/x"); got != "https://github.com/a/b/archive/feature/x.zip" {
+		t.Fatal(got)
+	}
+	if id := ID(godotAsset("", "https://github.com/a/b", "v1#x")); id != "git:https://github.com/a/b@v1#x" {
+		t.Fatal(id)
+	}
+}

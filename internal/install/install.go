@@ -70,6 +70,42 @@ func Fetch(ctx context.Context, client *http.Client, url, wantSHA256, tmpDir str
 	return f.Name(), gotSHA256, nil
 }
 
+// FetchCached returns <cacheDir>/<sha256>.zip when it exists and matches
+// wantSHA256, else downloads url into cacheDir and stores it under its hash.
+func FetchCached(ctx context.Context, client *http.Client, url, wantSHA256, cacheDir string) (zipPath, gotSHA256 string, err error) {
+	if wantSHA256 != "" {
+		cached := filepath.Join(cacheDir, wantSHA256+".zip")
+		if sum, err := fileSHA256(cached); err == nil && sum == wantSHA256 {
+			return cached, sum, nil
+		}
+	}
+
+	tmp, sum, err := Fetch(ctx, client, url, wantSHA256, cacheDir)
+	if err != nil {
+		return "", "", err
+	}
+	cached := filepath.Join(cacheDir, sum+".zip")
+	if err := os.Rename(tmp, cached); err != nil {
+		os.Remove(tmp)
+		return "", "", err
+	}
+	return cached, sum, nil
+}
+
+func fileSHA256(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	hash := sha256.New()
+	if _, err := io.Copy(hash, f); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(hash.Sum(nil)), nil
+}
+
 // Extract installs addons/<x>/** of the zip into projectDir and returns the
 // installed addons/<x> paths, sorted. Existing folders are only replaced when
 // listed in owned. Nothing is written when any check fails.
@@ -118,7 +154,8 @@ func Extract(zipPath, projectDir string, owned []string) ([]string, error) {
 	slices.Sort(tops)
 
 	for _, top := range tops {
-		_, err := os.Stat(filepath.Join(projectDir, filepath.FromSlash(top)))
+		// Lstat: a dangling symlink still counts as an existing folder
+		_, err := os.Lstat(filepath.Join(projectDir, filepath.FromSlash(top)))
 		if err == nil && !slices.Contains(owned, top) {
 			return nil, fmt.Errorf("%w: %s", ErrForeignPath, top)
 		}
@@ -203,7 +240,8 @@ func extractFile(f *zip.File, target string) error {
 	}
 	defer src.Close()
 
-	dst, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
+	// keep only the executable bits from the zip, everything else is 0644
+	dst, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644|f.Mode().Perm()&0o111)
 	if err != nil {
 		return err
 	}
