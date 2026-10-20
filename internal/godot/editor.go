@@ -38,7 +38,7 @@ func NewEditor(location string) (*Editor, error) {
 	}
 
 	fileInfo, err := os.Stat(location)
-	if errors.Is(err, os.ErrNotExist) {
+	if err != nil {
 		return nil, err
 	}
 
