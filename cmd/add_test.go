@@ -139,3 +139,14 @@ func TestAddRejectsInvalidName(t *testing.T) {
 		t.Fatal("installed despite invalid name")
 	}
 }
+
+func TestAddRejectsVersionForLibraryAsset(t *testing.T) {
+	dir := newTestProject(t)
+	err := run(t, newFakeLibrary(t), "add", "1234", "--version", "1.0")
+	if !errors.Is(err, errVersionForLibrary) {
+		t.Fatal(err)
+	}
+	if exists(filepath.Join(dir, "addons")) {
+		t.Fatal("installed")
+	}
+}

@@ -81,12 +81,18 @@ func newAddCmd(opts *options) *cobra.Command {
 	return cmd
 }
 
+// errVersionForLibrary: the asset library only serves the latest version, so --version cannot pin it.
+var errVersionForLibrary = errors.New("--version only applies to git URLs; the asset library always serves the latest version")
+
 func assetFromRef(ref, version string) (godot.PackageAssetConfiguration, error) {
 	var a godot.PackageAssetConfiguration
 
 	switch {
 	case ref != "" && strings.Trim(ref, "0123456789") == "":
-		a.Library, a.Version = ref, version
+		if version != "" {
+			return a, errVersionForLibrary
+		}
+		a.Library = ref
 	case strings.HasPrefix(ref, "https://") || strings.HasPrefix(ref, "http://"):
 		a.Git, a.Version = ref, version
 	default:
