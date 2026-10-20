@@ -1,6 +1,7 @@
 package godot
 
 import (
+	"errors"
 	"strings"
 	"testing"
 )
@@ -14,17 +15,16 @@ version="1.0.0"
 version=4.2.1
 
 [assets]
-custom_asset={ version="3.4.2", registry="my-custom-asset-registry" }
+custom_asset={ library="1234" }
 other_asset={ version="optional-git-ref", git="https://github.com/other/asset.git" }
 
 [dev_assets]
-custom_dev_asset={ version="3.4.2", registry="my-custom-asset-registry" }
+custom_dev_asset={ library="1709" }
 other_dev_asset={ version="optional-git-ref", git="https://github.com/other/dev_asset.git" }
 
 ; alternative asset definition
 [dev_assets.custom_other_dev_asset]
-version="3.4.2"
-registry="my-custom-asset-registry"
+library="42"
 
 [assets.custom_other_asset]
 version="optional-git-ref"
@@ -42,7 +42,7 @@ func TestProjectConfig(t *testing.T) {
 	if got := p.Assets["other_asset"].Git; got != "https://github.com/other/asset.git" {
 		t.Fatal(got)
 	}
-	if got := p.DevAssets["custom_other_dev_asset"].Registry; got != "my-custom-asset-registry" {
+	if got := p.DevAssets["custom_other_dev_asset"].Library; got != "42" {
 		t.Fatal(got)
 	}
 	if len(p.Assets) != 3 || len(p.DevAssets) != 3 {
@@ -60,5 +60,32 @@ func TestNewPackageInvalidAssetValue(t *testing.T) {
 	_, err := NewPackage([]byte("[assets]\nbroken=nonsense\n"))
 	if err == nil || !strings.Contains(err.Error(), "broken") {
 		t.Fatalf("expected error naming asset, got %v", err)
+	}
+}
+
+func TestAssetValidate(t *testing.T) {
+	cases := []struct {
+		a    PackageAssetConfiguration
+		want error
+	}{
+		{PackageAssetConfiguration{Library: "1234"}, nil},
+		{PackageAssetConfiguration{Git: "https://github.com/a/b", Version: "v1"}, nil},
+		{PackageAssetConfiguration{}, ErrNoSource},
+		{PackageAssetConfiguration{Library: "1", Git: "x", Version: "v"}, ErrMultipleSources},
+		{PackageAssetConfiguration{Registry: "r", Version: "1"}, ErrRegistryUnsupported},
+		{PackageAssetConfiguration{Library: "abc"}, ErrInvalidLibraryID},
+		{PackageAssetConfiguration{Git: "https://github.com/a/b"}, ErrGitVersionRequired},
+	}
+	for _, c := range cases {
+		if err := c.a.Validate(); !errors.Is(err, c.want) {
+			t.Errorf("%+v: got %v, want %v", c.a, err, c.want)
+		}
+	}
+}
+
+func TestNewPackageValidatesAssets(t *testing.T) {
+	_, err := NewPackage([]byte("[assets]\nfoo={ registry=\"r\", version=\"1\" }\n"))
+	if !errors.Is(err, ErrRegistryUnsupported) || !strings.Contains(err.Error(), "foo") {
+		t.Fatal(err)
 	}
 }

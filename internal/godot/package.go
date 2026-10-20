@@ -18,7 +18,13 @@ const (
 )
 
 var (
-	ErrInvalidAssetValue = errors.New("invalid asset value")
+	ErrInvalidAssetValue   = errors.New("invalid asset value")
+	ErrNoSource            = errors.New("no source: set library or git")
+	ErrMultipleSources     = errors.New("only one of library, git or registry may be set")
+	ErrRegistryUnsupported = errors.New("registry sources are not supported yet")
+	ErrInvalidLibraryID    = errors.New("library must be a numeric asset ID")
+	ErrGitVersionRequired  = errors.New("git sources require a version")
+
 	assetValueRe         = regexp.MustCompile(`(\w+)="([^"]+)"`)
 )
 
@@ -41,8 +47,33 @@ type PackageEditorConfiguration struct {
 
 type PackageAssetConfiguration struct {
 	Version  string
+	Library  string
 	Registry string
 	Git      string
+}
+
+func (a PackageAssetConfiguration) Validate() error {
+	sources := 0
+	for _, s := range []string{a.Library, a.Git, a.Registry} {
+		if s != "" {
+			sources++
+		}
+	}
+
+	switch {
+	case sources == 0:
+		return ErrNoSource
+	case sources > 1:
+		return ErrMultipleSources
+	case a.Registry != "":
+		return ErrRegistryUnsupported
+	case a.Library != "" && strings.Trim(a.Library, "0123456789") != "":
+		return ErrInvalidLibraryID
+	case a.Git != "" && a.Version == "":
+		return ErrGitVersionRequired
+	}
+
+	return nil
 }
 
 func NewPackage(source []byte) (*Package, error) {
@@ -74,6 +105,14 @@ func NewPackage(source []byte) (*Package, error) {
 	nestedAssets, nestedDevAssets := nestedSections(cfg.Sections())
 	maps.Copy(config.Assets, nestedAssets)
 	maps.Copy(config.DevAssets, nestedDevAssets)
+
+	for _, assets := range []map[string]PackageAssetConfiguration{config.Assets, config.DevAssets} {
+		for name, asset := range assets {
+			if err := asset.Validate(); err != nil {
+				return nil, fmt.Errorf("asset %q: %w", name, err)
+			}
+		}
+	}
 
 	return &config, nil
 }
@@ -109,6 +148,8 @@ func parseCustomINIValue(value string) (PackageAssetConfiguration, error) {
 		switch key {
 		case "version":
 			asset.Version = val
+		case "library":
+			asset.Library = val
 		case "registry":
 			asset.Registry = val
 		case "git":
@@ -127,6 +168,7 @@ func nestedSections(sections []*ini.Section) (map[string]PackageAssetConfigurati
 		if strings.HasPrefix(section.Name(), nestedAssetsPrefix) || strings.HasPrefix(section.Name(), nestedDevAssetsPrefix) {
 			asset := PackageAssetConfiguration{}
 			asset.Version = section.Key("version").String()
+			asset.Library = section.Key("library").String()
 			asset.Registry = section.Key("registry").String()
 			asset.Git = section.Key("git").String()
 
