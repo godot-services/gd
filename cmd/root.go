@@ -3,6 +3,7 @@ package cmd
 import (
 	"os"
 
+	"github.com/godot-services/gd/internal/godotbuilds"
 	"github.com/godot-services/gd/internal/source"
 	"github.com/spf13/cobra"
 )
@@ -21,7 +22,12 @@ Assets are declared in package.godot and pinned in package-lock.godot.`,
 	rootCmd.PersistentFlags().StringVar(&opts.libraryURL, "library-url", source.DefaultLibraryURL, "asset library API base URL")
 	rootCmd.PersistentFlags().MarkHidden("library-url")
 
-	rootCmd.AddCommand(newAddCmd(opts), newInstallCmd(opts), newRemoveCmd(), newSearchCmd(opts), newOutdatedCmd(opts), newUpdateCmd(opts), newCacheCmd())
+	rootCmd.PersistentFlags().StringVar(&opts.buildsURL, "builds-url", godotbuilds.DefaultBaseURL, "godot-builds download base URL")
+	rootCmd.PersistentFlags().StringVar(&opts.buildsAPIURL, "builds-api-url", godotbuilds.DefaultAPIURL, "godot-builds releases API URL")
+	rootCmd.PersistentFlags().MarkHidden("builds-url")
+	rootCmd.PersistentFlags().MarkHidden("builds-api-url")
+
+	rootCmd.AddCommand(newEditorCmd(opts), newAddCmd(opts), newInstallCmd(opts), newRemoveCmd(), newSearchCmd(opts), newOutdatedCmd(opts), newUpdateCmd(opts), newCacheCmd())
 
 	return rootCmd
 }

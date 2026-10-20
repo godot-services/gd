@@ -10,13 +10,24 @@ import (
 
 	"github.com/godot-services/gd/internal/editor"
 	"github.com/godot-services/gd/internal/godot"
+	"github.com/godot-services/gd/internal/godotbuilds"
 	"github.com/godot-services/gd/internal/install"
 	"github.com/godot-services/gd/internal/source"
 	"github.com/spf13/cobra"
 )
 
 type options struct {
-	libraryURL string
+	libraryURL   string
+	buildsURL    string
+	buildsAPIURL string
+}
+
+func (o *options) builds() godotbuilds.Client {
+	token := os.Getenv("GH_TOKEN")
+	if token == "" {
+		token = os.Getenv("GITHUB_TOKEN")
+	}
+	return godotbuilds.Client{BaseURL: o.buildsURL, APIURL: o.buildsAPIURL, Token: token, HTTP: &http.Client{Timeout: 10 * time.Minute}}
 }
 
 func (o *options) library() source.Library {

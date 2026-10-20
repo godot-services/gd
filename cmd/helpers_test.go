@@ -3,6 +3,8 @@ package cmd
 import (
 	"archive/zip"
 	"bytes"
+	"crypto/sha512"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,6 +13,8 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 	"testing"
 )
 
@@ -139,4 +143,49 @@ func runOut(t *testing.T, lib *fakeLibrary, args ...string) (string, error) {
 func exists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
+}
+
+// newFakeBuilds serves godot-builds style downloads for any tag. The zip holds an
+// executable for every OS layout, so whichever the host picks is found.
+func newFakeBuilds(t *testing.T) string {
+	t.Helper()
+	suffixes := []string{
+		"_linux.x86_64.zip", "_linux.arm64.zip", "_linux_x86_64.zip", "_linux_arm64.zip",
+		"_macos.universal.zip", "_win64.exe.zip", "_win64.zip", "_windows_arm64.exe.zip", "_windows_arm64.zip",
+	}
+	var mu sync.Mutex
+	zips := map[string][]byte{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+		if len(parts) != 2 {
+			http.NotFound(w, r)
+			return
+		}
+		tag, name := parts[0], parts[1]
+		// zipBytes iterates a map, so cache per tag to keep the hash stable
+		mu.Lock()
+		z, ok := zips[tag]
+		if !ok {
+			z = zipBytes(t, map[string]string{
+				"Godot_v" + tag + "_linux.x86_64": "bin",
+				"Godot.app/Contents/MacOS/Godot":  "bin",
+				"Godot_v" + tag + "_win64.exe":    "bin",
+			})
+			zips[tag] = z
+		}
+		mu.Unlock()
+		sum := sha512.Sum512(z)
+		if name == "SHA512-SUMS.txt" {
+			for _, mono := range []string{"", "mono_"} {
+				for _, s := range suffixes {
+					n := "Godot_v" + tag + strings.Replace(s, "_", "_"+mono, 1)
+					fmt.Fprintf(w, "%s  %s\n", hex.EncodeToString(sum[:]), n)
+				}
+			}
+			return
+		}
+		w.Write(z)
+	}))
+	t.Cleanup(srv.Close)
+	return srv.URL
 }
