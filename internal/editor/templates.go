@@ -60,6 +60,7 @@ func InstallTemplates(ctx context.Context, c godotbuilds.Client, tag string, dot
 	if err := godot.ValidateVersion(tag); err != nil {
 		return "", err
 	}
+	sweepStaging(templatesDir)
 	if _, err := os.Lstat(filepath.Join(templatesDir, expected)); err == nil && !force {
 		return "", fmt.Errorf("%w: %s", ErrTemplatesInstalled, expected)
 	}

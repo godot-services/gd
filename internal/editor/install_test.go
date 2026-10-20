@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+	"time"
 
 	"github.com/godot-services/gd/internal/godotbuilds"
 	"github.com/godot-services/gd/internal/install"
@@ -255,4 +256,64 @@ func TestInstallMakesBinaryExecutable(t *testing.T) {
 		t.Fatal(err)
 	}
 	isExec(t, ed.Path)
+}
+
+func TestInstallStripsStableSuffix(t *testing.T) {
+	asset := "Godot_v4.7.2-stable_linux.x86_64.zip"
+	c := server(t, asset, makeZip(t, zent{"Godot_v4.7.2-stable_linux.x86_64", "bin", 0o755}), "")
+	dd := t.TempDir()
+	ed, err := Install(context.Background(), c, dd, "4.7.2-stable", false, "linux", "amd64")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ed.Name != "4.7.2" || ed.Version != "4.7.2-stable" || !exists(filepath.Join(dd, "editors", "4.7.2")) {
+		t.Errorf("editor = %+v", ed)
+	}
+	if _, err := Install(context.Background(), c, dd, "4.7.2", false, "linux", "amd64"); !errors.Is(err, ErrAlreadyInstalled) {
+		t.Errorf("second install err = %v", err)
+	}
+	if n := ManagedName("4.8-beta1", true); n != "4.8-beta1-dotnet" {
+		t.Errorf("ManagedName = %q", n)
+	}
+}
+
+// staleStaging creates an old and a fresh staging dir in parent.
+func staleStaging(t *testing.T, parent string) (old, fresh string) {
+	t.Helper()
+	old, fresh = filepath.Join(parent, ".staging-old"), filepath.Join(parent, ".staging-fresh")
+	for _, d := range []string{old, fresh} {
+		if err := os.MkdirAll(filepath.Join(d, "tree"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	past := time.Now().Add(-2 * time.Hour)
+	if err := os.Chtimes(old, past, past); err != nil {
+		t.Fatal(err)
+	}
+	return old, fresh
+}
+
+func TestInstallSweepsStaleStaging(t *testing.T) {
+	asset := "Godot_v4.7.2-stable_linux.x86_64.zip"
+	c := server(t, asset, makeZip(t, zent{"Godot_v4.7.2-stable_linux.x86_64", "bin", 0o755}), "")
+	dd := t.TempDir()
+	old, fresh := staleStaging(t, filepath.Join(dd, "editors"))
+	if _, err := Install(context.Background(), c, dd, "4.7.2", false, "linux", "amd64"); err != nil {
+		t.Fatal(err)
+	}
+	if exists(old) || !exists(fresh) {
+		t.Errorf("old kept %v, fresh kept %v", exists(old), exists(fresh))
+	}
+}
+
+func TestInstallTemplatesSweepsStaleStaging(t *testing.T) {
+	c := server(t, "Godot_v4.7.2-stable_export_templates.tpz", tpz(t, "4.7.2.stable"), "")
+	dir := t.TempDir()
+	old, fresh := staleStaging(t, dir)
+	if _, err := InstallTemplates(context.Background(), c, "4.7.2-stable", false, dir, false); err != nil {
+		t.Fatal(err)
+	}
+	if exists(old) || !exists(fresh) {
+		t.Errorf("old kept %v, fresh kept %v", exists(old), exists(fresh))
+	}
 }

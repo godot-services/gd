@@ -10,6 +10,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/godot-services/gd/internal/godot"
 	"github.com/godot-services/gd/internal/godotbuilds"
@@ -209,11 +210,9 @@ func Install(ctx context.Context, c godotbuilds.Client, dataDir, version string,
 	if err := godot.ValidateVersion(version); err != nil {
 		return Editor{}, err
 	}
-	name := version
-	if dotnet {
-		name += "-dotnet"
-	}
+	name := ManagedName(version, dotnet)
 	editors := filepath.Join(dataDir, "editors")
+	sweepStaging(editors)
 	final := filepath.Join(editors, name)
 	if _, err := os.Lstat(final); err == nil {
 		return Editor{}, fmt.Errorf("%w: %s", ErrAlreadyInstalled, name)
@@ -262,4 +261,26 @@ func Install(ctx context.Context, c godotbuilds.Client, dataDir, version string,
 	}
 	rel, _ := filepath.Rel(tree, gui)
 	return Editor{Name: name, Path: filepath.Join(final, rel), Version: tag, Dotnet: dotnet, Build: "official", Source: "managed"}, nil
+}
+
+// ManagedName is the editors/ dir and registry name; 4.7.2-stable and 4.7.2 share one.
+func ManagedName(version string, dotnet bool) string {
+	name := strings.TrimSuffix(version, "-stable")
+	if dotnet {
+		name += "-dotnet"
+	}
+	return name
+}
+
+// sweepStaging removes staging dirs left by killed runs; the age keeps concurrent runs safe.
+func sweepStaging(parent string) {
+	entries, _ := os.ReadDir(parent)
+	for _, e := range entries {
+		if !strings.HasPrefix(e.Name(), ".staging-") {
+			continue
+		}
+		if fi, err := e.Info(); err == nil && time.Since(fi.ModTime()) > time.Hour {
+			os.RemoveAll(filepath.Join(parent, e.Name()))
+		}
+	}
 }
