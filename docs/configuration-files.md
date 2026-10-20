@@ -56,4 +56,4 @@ gets the same files. `paths` lists the folders `gd` installed under `addons/`;
 
 Commit both files.
 
-Downloaded zips are cached by SHA-256 in `<user cache dir>/gd/` (see [ADR 0014](adr/0014-zip-cache.md)); delete that folder to clear the cache.
+Downloaded zips are cached by SHA-256 in `<user cache dir>/gd/` (see [ADR 0014](adr/0014-zip-cache.md)); `gd cache info` shows it and `gd cache clean` clears it.

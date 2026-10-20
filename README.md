@@ -26,6 +26,8 @@ gd remove tool
 gd search dialogue                                        # find asset IDs (Godot version from project.godot or --godot)
 gd outdated                                               # library assets with a newer version; exits 1 if any
 gd update [name...]                                       # move assets to their latest version
+gd cache info                                             # where the download cache is and how big
+gd cache clean                                            # delete cached downloads
 ```
 
 `gd add` writes `package.godot` and `package-lock.godot`; commit both. `gd install`
@@ -77,3 +79,4 @@ and the [decision records](/docs/adr/README.md) for why it works this way.
 | search   | search addons in the asset library                  | done  |
 | outdated | show library assets with a newer version            | done  |
 | update   | update assets to their latest version               | done  |
+| cache    | inspect or clear the download cache                 | done  |
