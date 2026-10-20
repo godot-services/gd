@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/godot-services/gd/internal/godot"
 	"github.com/godot-services/gd/internal/testutil/fakegodot"
 )
 
@@ -124,5 +125,25 @@ func TestExitCode(t *testing.T) {
 	}
 	if c := exitCode(nil, &buf); c != 0 {
 		t.Errorf("nil: code %d", c)
+	}
+}
+
+func TestGodotOutsideProjectUsesDefault(t *testing.T) {
+	isolateCache(t)
+	log := setupFakeEditor(t)
+	chdir(t, t.TempDir())
+	if _, err := runEditor(t, "", "godot", "--", "--headless", "x"); err != nil {
+		t.Fatal(err)
+	}
+	if got := readLog(t, log); !strings.Contains(got, "\n--headless\tx\n") {
+		t.Errorf("log = %q", got)
+	}
+	t.Setenv("GD_FAKE_GODOT_EXIT", "4")
+	var ee exitError
+	if _, err := runEditor(t, "", "godot", "--", "x"); !errors.As(err, &ee) || ee.code != 4 {
+		t.Errorf("err = %v", err)
+	}
+	if _, err := runEditor(t, "", "open"); !errors.Is(err, godot.ErrNoGodotProject) {
+		t.Errorf("open err = %v", err)
 	}
 }
