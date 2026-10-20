@@ -31,7 +31,7 @@ Assets are declared in package.godot and pinned in package-lock.godot.`,
 	rootCmd.PersistentFlags().MarkHidden("builds-url")
 	rootCmd.PersistentFlags().MarkHidden("builds-api-url")
 
-	rootCmd.AddCommand(newEditorCmd(opts), newAddCmd(opts), newInstallCmd(opts), newRemoveCmd(), newSearchCmd(opts), newOutdatedCmd(opts), newUpdateCmd(opts), newCacheCmd(), newOpenCmd("open"), newGodotCmd())
+	rootCmd.AddCommand(newEditorCmd(opts), newAddCmd(opts), newInstallCmd(opts), newRemoveCmd(), newSearchCmd(opts), newOutdatedCmd(opts), newUpdateCmd(opts), newCacheCmd(), newOpenCmd("open"), newGodotCmd(), newStartCmd())
 
 	return rootCmd
 }
