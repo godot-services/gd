@@ -2,6 +2,7 @@ package godot
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -9,6 +10,8 @@ import (
 const (
 	ProjectFileName = "project.godot"
 )
+
+var ErrNoGodotProject = errors.New("no project.godot found")
 
 type Project struct {
 	Location string
@@ -20,20 +23,20 @@ func NewProject(location string) (*Project, error) {
 		return nil, err
 	}
 
-	if has, err := hasGodotProject(normalizedLocation); !has || err != nil {
+	if err := hasGodotProject(normalizedLocation); err != nil {
 		return nil, err
 	}
 
 	return &Project{normalizedLocation}, nil
 }
 
-func hasGodotProject(location string) (bool, error) {
+func hasGodotProject(location string) error {
 	_, err := os.Stat(filepath.Join(location, ProjectFileName))
 	if errors.Is(err, os.ErrNotExist) {
-		return false, err
+		return fmt.Errorf("%w: %s", ErrNoGodotProject, location)
 	}
 
-	return true, nil
+	return err
 }
 
 func normalizeLocation(location string) (string, error) {
@@ -51,7 +54,7 @@ func normalizeLocation(location string) (string, error) {
 
 func locationDirectory(location string) (string, error) {
 	fileInfo, err := os.Stat(location)
-	if errors.Is(err, os.ErrNotExist) {
+	if err != nil {
 		return location, err
 	}
 

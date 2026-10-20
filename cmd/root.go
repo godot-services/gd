@@ -3,41 +3,33 @@ package cmd
 import (
 	"os"
 
+	"github.com/godot-services/gd/internal/source"
 	"github.com/spf13/cobra"
 )
 
-// rootCmd represents the base command when called without any subcommands
-var rootCmd = &cobra.Command{
-	Use:   "gd",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
+func newRootCmd() *cobra.Command {
+	opts := &options{}
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	// Run: func(cmd *cobra.Command, args []string) { },
+	rootCmd := &cobra.Command{
+		Use:   "gd",
+		Short: "Package manager for Godot projects",
+		Long: `gd manages the addons of a Godot project.
+Assets are declared in package.godot and pinned in package-lock.godot.`,
+		SilenceUsage: true,
+	}
+
+	rootCmd.PersistentFlags().StringVar(&opts.libraryURL, "library-url", source.DefaultLibraryURL, "asset library API base URL")
+	rootCmd.PersistentFlags().MarkHidden("library-url")
+
+	rootCmd.AddCommand(newAddCmd(opts), newInstallCmd(opts), newRemoveCmd(opts))
+
+	return rootCmd
 }
 
-// Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
+// Execute runs the root command. This is called by main.main().
 func Execute() {
-	err := rootCmd.Execute()
+	err := newRootCmd().Execute()
 	if err != nil {
 		os.Exit(1)
 	}
-}
-
-func init() {
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
-
-	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.gd.yaml)")
-
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
