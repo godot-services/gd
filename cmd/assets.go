@@ -8,9 +8,11 @@ import (
 	"slices"
 	"time"
 
+	"github.com/godot-services/gd/internal/editor"
 	"github.com/godot-services/gd/internal/godot"
 	"github.com/godot-services/gd/internal/install"
 	"github.com/godot-services/gd/internal/source"
+	"github.com/spf13/cobra"
 )
 
 type options struct {
@@ -118,4 +120,17 @@ func loadProject() (dir string, pkg *godot.Package, lock godot.Lock, err error) 
 		return "", nil, nil, err
 	}
 	return project.Location, pkg, lock, nil
+}
+
+// warnVersionMismatch prints a warning to stderr when package.godot's editor version
+// and project.godot's config/features differ; it never fails the command.
+func warnVersionMismatch(cmd *cobra.Command, project *godot.Project, pkg *godot.Package) {
+	if pkg.Editor.Version == "" {
+		return
+	}
+	if v, err := project.GodotVersion(); err == nil {
+		if w := editor.VersionWarning(v, pkg.Editor.Version); w != "" {
+			cmd.PrintErrln(w)
+		}
+	}
 }

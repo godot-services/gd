@@ -14,6 +14,10 @@ Both files use the INI format Godot uses for `project.godot`.
 name="My game"
 version="1.0.0"
 
+[editor]
+version="4.7.2"
+dotnet=false
+
 [assets]
 dialogic={ library="1234" }
 my_tool={ git="https://github.com/foo/tool", version="v1.2.0" }
@@ -38,6 +42,24 @@ Every asset has exactly one source key:
 `dev_assets` are installed like `assets` for now.
 
 Asset names may only contain `a-z`, `0-9` and `_`.
+
+`[editor]` pins the Godot editor of the project: `version` (`4.7.2`, `4.8-beta1`; a
+plain number means the `-stable` release) and `dotnet` (default `false`). `gd search`
+uses it as the Godot version, and `gd install` / `gd search` warn when its
+major.minor differs from `config/features` in `project.godot`.
+
+# `package.local.godot`
+
+Personal, not committed (add it to `.gitignore`):
+
+```ini
+[editor]
+name="my-build"
+```
+
+`name` is a registered editor (see `gd editor list`). It wins over version matching,
+also for custom builds. Without it the editor is resolved by the `[editor]` version:
+the `default` editor if it matches, else a managed, then a linked official editor.
 
 # `package-lock.godot`
 

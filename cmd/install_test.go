@@ -1,10 +1,13 @@
 package cmd
 
 import (
+	"bytes"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/godot-services/gd/internal/godot"
@@ -209,5 +212,18 @@ func TestInstallNoDevSkipsDevAssetWithoutLockEntry(t *testing.T) {
 	}
 	if lib.assetHits != 0 || lib.zipHits != 0 || exists(filepath.Join(dir, "addons")) || exists(filepath.Join(dir, godot.LockFileName)) {
 		t.Fatalf("asset %d zip %d", lib.assetHits, lib.zipHits)
+	}
+}
+
+func TestInstallWarnsOnVersionMismatch(t *testing.T) {
+	dir := newGodot4Project(t, "4.6")
+	os.WriteFile(filepath.Join(dir, godot.PackageFileName), []byte("[editor]\nversion=\"4.7.2\"\n"), 0o644)
+	var errOut bytes.Buffer
+	root := newRootCmd()
+	root.SetArgs([]string{"--library-url", newFakeLibrary(t).URL, "install"})
+	root.SetOut(io.Discard)
+	root.SetErr(&errOut)
+	if err := root.Execute(); err != nil || !strings.Contains(errOut.String(), "4.6") || !strings.Contains(errOut.String(), "4.7") {
+		t.Fatal(errOut.String(), err)
 	}
 }

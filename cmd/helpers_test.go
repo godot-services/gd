@@ -26,12 +26,15 @@ func newTestProject(t *testing.T) string {
 	return dir
 }
 
-// isolateCache points os.UserCacheDir at a temp dir (HOME on macOS, XDG_CACHE_HOME on Linux).
+// isolateCache points the user cache and data dirs at a temp dir.
 func isolateCache(t *testing.T) string {
 	t.Helper()
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("XDG_CACHE_HOME", filepath.Join(home, ".cache"))
+	t.Setenv("XDG_DATA_HOME", filepath.Join(home, ".local", "share"))
+	t.Setenv("APPDATA", filepath.Join(home, "AppData", "Roaming"))
+	t.Setenv("LOCALAPPDATA", filepath.Join(home, "AppData", "Local"))
 	return home
 }
 

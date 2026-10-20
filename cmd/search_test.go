@@ -76,3 +76,13 @@ func TestSearchNoResults(t *testing.T) {
 		t.Fatal(out, err)
 	}
 }
+
+func TestSearchPrefersEditorVersion(t *testing.T) {
+	dir := newGodot4Project(t, "4.3")
+	os.WriteFile(filepath.Join(dir, godot.PackageFileName), []byte("[editor]\nversion=\"4.7.2\"\n"), 0o644)
+	lib := newFakeLibrary(t)
+
+	if _, err := runOut(t, lib, "search", "gut"); err != nil || lib.lastQuery.Get("godot_version") != "4.7" {
+		t.Fatal(lib.lastQuery, err)
+	}
+}
