@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"path"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/godot-services/gd/internal/godot"
@@ -39,27 +40,12 @@ type Library struct {
 
 // Resolve looks up an asset in the asset library (GET {BaseURL}/asset/{id}).
 func (l Library) Resolve(ctx context.Context, id string) (Resolved, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimSuffix(l.BaseURL, "/")+"/asset/"+url.PathEscape(id), nil)
-	if err != nil {
-		return Resolved{}, err
-	}
-
-	resp, err := l.Client.Do(req)
-	if err != nil {
-		return Resolved{}, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return Resolved{}, fmt.Errorf("asset library: asset %s: %s", id, resp.Status)
-	}
-
 	var asset struct {
 		Title         string `json:"title"`
 		VersionString string `json:"version_string"`
 		DownloadURL   string `json:"download_url"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&asset); err != nil {
+	if err := l.getJSON(ctx, "/asset/"+url.PathEscape(id), &asset); err != nil {
 		return Resolved{}, fmt.Errorf("asset library: asset %s: %w", id, err)
 	}
 	if asset.DownloadURL == "" {
@@ -67,6 +53,51 @@ func (l Library) Resolve(ctx context.Context, id string) (Resolved, error) {
 	}
 
 	return Resolved{URL: asset.DownloadURL, Title: asset.Title, VersionString: asset.VersionString, Source: ID(godot.PackageAssetConfiguration{Library: id})}, nil
+}
+
+type SearchResult struct {
+	AssetID       string `json:"asset_id"`
+	Title         string `json:"title"`
+	VersionString string `json:"version_string"`
+	GodotVersion  string `json:"godot_version"`
+	Cost          string `json:"cost"`
+	SupportLevel  string `json:"support_level"`
+}
+
+// Search lists addons matching query for a Godot version and returns them with the total match count.
+func (l Library) Search(ctx context.Context, query, godotVersion string, max int) ([]SearchResult, int, error) {
+	params := url.Values{
+		"type":          {"addon"},
+		"filter":        {query},
+		"godot_version": {godotVersion},
+		"max_results":   {strconv.Itoa(max)},
+	}
+	var page struct {
+		Result     []SearchResult `json:"result"`
+		TotalItems int            `json:"total_items"`
+	}
+	if err := l.getJSON(ctx, "/asset?"+params.Encode(), &page); err != nil {
+		return nil, 0, fmt.Errorf("asset library: search: %w", err)
+	}
+	return page.Result, page.TotalItems, nil
+}
+
+func (l Library) getJSON(ctx context.Context, pathAndQuery string, v any) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimSuffix(l.BaseURL, "/")+pathAndQuery, nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := l.Client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return errors.New(resp.Status)
+	}
+	return json.NewDecoder(resp.Body).Decode(v)
 }
 
 // GitArchiveURL builds the zip archive URL like the official asset library does.
