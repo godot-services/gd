@@ -36,6 +36,9 @@ func newOutdatedCmd(opts *options) *cobra.Command {
 				switch {
 				case !locked:
 					rows = append(rows, [4]string{name, "-", "not installed", source.ID(a)})
+				case entry.Source != source.ID(a):
+					// package.godot changed since the last install: the lock describes another source
+					rows = append(rows, [4]string{name, entry.VersionString, "run gd install", source.ID(a)})
 				case a.Git != "":
 					rows = append(rows, [4]string{name, a.Version, "pinned", source.ID(a)})
 				default:

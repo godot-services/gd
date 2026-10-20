@@ -24,12 +24,16 @@ to a ref (ADR 0006).
   install or removal. Lock entries of dev assets are never treated as stale.
 - **Outdated** means: the library now returns another `download_url` or
   `version_string` than the lock entry. Git assets are shown as `pinned`; `gd`
-  does not query git hosts for newer tags.
+  does not query git hosts for newer tags. When the source in `package.godot`
+  differs from the lock entry, the row says `run gd install` instead of
+  comparing unrelated sources.
 - **`gd outdated` exits with 1** when any asset is outdated (like `npm
   outdated`), so CI can fail on it. It never writes files.
 - **`gd update [name...]`** re-resolves assets (library: latest; git: same ref,
   so only branch refs get new content), keeps ownership of the installed
   folders and saves the lock after each asset. It never changes `package.godot`.
+  It reports `updated` when URL, version string or hash changed, so it agrees
+  with `gd outdated`.
 
 ## Consequences
 

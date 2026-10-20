@@ -74,6 +74,7 @@ type fakeLibrary struct {
 
 	// asset 1234
 	version     string
+	staticURL   bool // download_url stays /zip when version changes
 	assetStatus int
 	assetHits   int
 
@@ -91,7 +92,11 @@ func newFakeLibrary(t *testing.T) *fakeLibrary {
 		case "/asset/1234":
 			lib.assetHits++
 			w.WriteHeader(lib.assetStatus)
-			fmt.Fprintf(w, `{"title":"Dialogic 2","version_string":"%s","download_url":"%s/zip?v=%s"}`, lib.version, lib.URL, lib.version)
+			download := lib.URL + "/zip?v=" + lib.version
+			if lib.staticURL {
+				download = lib.URL + "/zip"
+			}
+			fmt.Fprintf(w, `{"title":"Dialogic 2","version_string":"%s","download_url":"%s"}`, lib.version, download)
 		case "/asset":
 			lib.lastQuery = r.URL.Query()
 			json.NewEncoder(w).Encode(map[string]any{"result": lib.results, "total_items": len(lib.results)})

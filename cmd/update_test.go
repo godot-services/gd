@@ -95,3 +95,18 @@ func TestUpdateReplacesChangedFolders(t *testing.T) {
 		t.Fatalf("%+v", lock)
 	}
 }
+
+func TestUpdateReportsNewVersionStringWithSameURL(t *testing.T) {
+	newTestProject(t)
+	lib := newFakeLibrary(t)
+	lib.staticURL = true
+	if err := run(t, lib, "add", "1234"); err != nil {
+		t.Fatal(err)
+	}
+	lib.version = "2.1"
+
+	out, err := runOut(t, lib, "update")
+	if err != nil || !strings.Contains(out, "updated dialogic_2 2.0 -> 2.1") {
+		t.Fatal(out, err)
+	}
+}

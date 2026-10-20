@@ -83,3 +83,15 @@ func readBoth(t *testing.T, dir string) string {
 	b, _ := os.ReadFile(filepath.Join(dir, godot.LockFileName))
 	return string(a) + string(b)
 }
+
+func TestOutdatedSourceChangedNeedsInstall(t *testing.T) {
+	dir := newTestProject(t)
+	lib := newFakeLibrary(t)
+	os.WriteFile(filepath.Join(dir, godot.PackageFileName), []byte("[assets]\ndlg={ library=\"1234\" }\n"), 0o644)
+	godot.Lock{"dlg": {Source: "git:https://github.com/a/dlg@v1", URL: "u", SHA256: "s", VersionString: "v1", Paths: []string{"addons/x"}}}.Save(dir)
+
+	out, err := runOut(t, lib, "outdated")
+	if err != nil || !strings.Contains(out, "run gd install") || lib.assetHits != 0 {
+		t.Fatal(out, err, lib.assetHits)
+	}
+}

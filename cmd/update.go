@@ -40,7 +40,8 @@ func newUpdateCmd(opts *options) *cobra.Command {
 					return err
 				}
 
-				if updated.URL != old.URL || updated.SHA256 != old.SHA256 {
+				// same rule as gd outdated (URL or version string), plus new bytes behind the same URL
+			if updated.URL != old.URL || updated.VersionString != old.VersionString || updated.SHA256 != old.SHA256 {
 					cmd.Printf("updated %s %s -> %s\n", name, old.VersionString, updated.VersionString)
 				} else {
 					cmd.Printf("%s is up to date\n", name)
