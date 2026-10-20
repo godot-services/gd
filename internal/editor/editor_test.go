@@ -82,19 +82,28 @@ func TestRegistryRoundTrip(t *testing.T) {
 }
 
 func TestDataDirs(t *testing.T) {
-	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
-		t.Skip("linux paths only")
-	}
-	t.Setenv("XDG_DATA_HOME", "/x")
-	if d, _ := DataDir(); d != "/x/gd" {
-		t.Errorf("DataDir = %q", d)
-	}
-	if d, _ := GodotDataDir(); d != "/x/godot" {
-		t.Errorf("GodotDataDir = %q", d)
-	}
-	t.Setenv("XDG_DATA_HOME", "")
 	t.Setenv("HOME", "/h")
-	if d, _ := DataDir(); d != filepath.Join("/h", ".local/share/gd") {
-		t.Errorf("DataDir = %q", d)
+	t.Setenv("XDG_DATA_HOME", "/x")
+	t.Setenv("LOCALAPPDATA", "/l")
+	t.Setenv("APPDATA", "/a")
+	var wantGD, wantGodot string
+	switch runtime.GOOS {
+	case "windows":
+		wantGD, wantGodot = filepath.Join("/l", "gd"), filepath.Join("/a", "Godot")
+	case "darwin":
+		wantGD, wantGodot = "/h/Library/Application Support/gd", "/h/Library/Application Support/Godot"
+	default:
+		wantGD, wantGodot = "/x/gd", "/x/godot"
+		t.Setenv("XDG_DATA_HOME", "")
+		if d, _ := DataDir(); d != "/h/.local/share/gd" {
+			t.Errorf("fallback DataDir = %q", d)
+		}
+		t.Setenv("XDG_DATA_HOME", "/x")
+	}
+	if d, _ := DataDir(); d != wantGD {
+		t.Errorf("DataDir = %q, want %q", d, wantGD)
+	}
+	if d, _ := GodotDataDir(); d != wantGodot {
+		t.Errorf("GodotDataDir = %q, want %q", d, wantGodot)
 	}
 }
