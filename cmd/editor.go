@@ -17,7 +17,7 @@ import (
 
 func newEditorCmd(opts *options) *cobra.Command {
 	c := &cobra.Command{Use: "editor", Short: "Manage Godot editors"}
-	c.AddCommand(newEditorInstallCmd(opts), newEditorUninstallCmd(), newEditorListCmd())
+	c.AddCommand(newEditorInstallCmd(opts), newEditorUninstallCmd(), newEditorListCmd(), newEditorAvailableCmd(opts))
 	return c
 }
 
@@ -156,4 +156,28 @@ func newEditorListCmd() *cobra.Command {
 			return w.Flush()
 		},
 	}
+}
+
+func newEditorAvailableCmd(opts *options) *cobra.Command {
+	var pre bool
+	c := &cobra.Command{
+		Use:   "available",
+		Short: "List Godot 4 versions from godot-builds",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			tags, err := opts.builds().Available(cmd.Context(), pre)
+			if err != nil {
+				return err
+			}
+			if len(tags) == 0 {
+				cmd.Println("no Godot 4 releases found")
+			}
+			for _, t := range tags {
+				cmd.Println(t)
+			}
+			return nil
+		},
+	}
+	c.Flags().BoolVar(&pre, "pre", false, "include rc, beta and dev releases")
+	return c
 }

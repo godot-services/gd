@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -129,5 +131,33 @@ func TestEditorList(t *testing.T) {
 	}
 	if !strings.HasPrefix(def, "*") || !strings.HasPrefix(proj, ">") || !strings.Contains(out, "NAME") {
 		t.Errorf("out = %q", out)
+	}
+}
+
+func TestEditorAvailable(t *testing.T) {
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("page") == "1" {
+			w.Write([]byte(`[{"tag_name":"4.8-beta1"},{"tag_name":"4.7.2-stable"},{"tag_name":"3.6-stable"}]`))
+			return
+		}
+		w.Write([]byte(`[]`))
+	}))
+	defer api.Close()
+	out, err := runEditor(t, "", "--builds-api-url", api.URL, "editor", "available")
+	if err != nil || out != "4.7.2-stable\n" {
+		t.Errorf("out = %q, err = %v", out, err)
+	}
+	out, err = runEditor(t, "", "--builds-api-url", api.URL, "editor", "available", "--pre")
+	if err != nil || out != "4.8-beta1\n4.7.2-stable\n" {
+		t.Errorf("--pre out = %q, err = %v", out, err)
+	}
+}
+
+func TestEditorAvailableNone(t *testing.T) {
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(`[]`)) }))
+	defer api.Close()
+	out, err := runEditor(t, "", "--builds-api-url", api.URL, "editor", "available")
+	if err != nil || out != "no Godot 4 releases found\n" {
+		t.Errorf("out = %q, err = %v", out, err)
 	}
 }

@@ -5,9 +5,11 @@ import (
 	"bufio"
 	"context"
 	"crypto/sha512"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -126,4 +128,58 @@ func (c Client) Download(ctx context.Context, tag, asset, wantSHA512, dir string
 	}
 	path, _, err := install.FetchHash(ctx, c.HTTP, c.BaseURL+"/"+tag+"/"+asset, wantSHA512, dir, sha512.New)
 	return path, err
+}
+
+var godot4TagRe = regexp.MustCompile(`^4\.\d+(\.\d+)?(-(stable|rc\d+|beta\d+|dev\d+))?$`)
+
+// Available lists Godot 4 release tags, newest first (API order). Without pre only "-stable" tags.
+func (c Client) Available(ctx context.Context, pre bool) ([]string, error) {
+	var tags []string
+	for page := 1; ; page++ {
+		url := fmt.Sprintf("%s?per_page=100&page=%d", c.APIURL, page)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Accept", "application/vnd.github+json")
+		if c.Token != "" {
+			req.Header.Set("Authorization", "Bearer "+c.Token)
+		}
+		releases, err := c.releasePage(req)
+		if err != nil {
+			return nil, err
+		}
+		if len(releases) == 0 {
+			return tags, nil
+		}
+		for _, r := range releases {
+			if godot4TagRe.MatchString(r.TagName) && (pre || strings.HasSuffix(r.TagName, "-stable")) {
+				tags = append(tags, r.TagName)
+			}
+		}
+	}
+}
+
+type release struct {
+	TagName string `json:"tag_name"`
+}
+
+func (c Client) releasePage(req *http.Request) ([]release, error) {
+	resp, err := c.HTTP.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		hint := ""
+		if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusTooManyRequests {
+			hint = " (set GH_TOKEN to raise the rate limit)"
+		}
+		return nil, fmt.Errorf("fetch %s: %s%s", req.URL, resp.Status, hint)
+	}
+	var releases []release
+	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
+		return nil, fmt.Errorf("decode %s: %w", req.URL, err)
+	}
+	return releases, nil
 }
