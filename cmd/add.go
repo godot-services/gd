@@ -53,11 +53,12 @@ func newAddCmd(opts *options) *cobra.Command {
 			if err := pkg.AddAsset(name, a, dev); err != nil {
 				return err
 			}
-			if err := pkg.Save(dir); err != nil {
-				return err
-			}
+			// lock first: if saving package.godot fails, gd install removes the entry as stale
 			lock[name] = entry
 			if err := lock.Save(dir); err != nil {
+				return err
+			}
+			if err := pkg.Save(dir); err != nil {
 				return err
 			}
 

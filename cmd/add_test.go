@@ -105,3 +105,23 @@ func TestAddInvalidReference(t *testing.T) {
 		t.Fatal("expected error")
 	}
 }
+
+func TestAddFailingPackageSaveIsRecoverable(t *testing.T) {
+	dir := newTestProject(t)
+	lib := newFakeLibrary(t)
+	pkgFile := filepath.Join(dir, godot.PackageFileName)
+	os.WriteFile(pkgFile, []byte("[assets]\n"), 0o444)
+
+	if err := run(t, lib, "add", "1234"); err == nil {
+		t.Fatal("expected save error")
+	}
+	os.Chmod(pkgFile, 0o644)
+
+	// install cleans up the half state, so adding again works
+	if err := run(t, lib, "install"); err != nil {
+		t.Fatal(err)
+	}
+	if err := run(t, lib, "add", "1234"); err != nil {
+		t.Fatal(err)
+	}
+}
