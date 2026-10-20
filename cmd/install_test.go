@@ -107,3 +107,35 @@ func TestInstallRelocksChangedSource(t *testing.T) {
 		t.Fatalf("%+v", lock)
 	}
 }
+
+func TestInstallAfterRename(t *testing.T) {
+	dir := newTestProject(t)
+	lib := newFakeLibrary(t)
+	if err := run(t, lib, "add", "1234"); err != nil {
+		t.Fatal(err)
+	}
+	os.WriteFile(filepath.Join(dir, godot.PackageFileName), []byte("[assets]\ndlg={ library=\"1234\" }\n"), 0o644)
+
+	if err := run(t, lib, "install"); err != nil {
+		t.Fatal(err)
+	}
+	lock, _ := godot.LoadLock(dir)
+	if _, ok := lock["dialogic_2"]; ok || !reflect.DeepEqual(lock["dlg"].Paths, []string{"addons/x"}) || !exists(filepath.Join(dir, "addons", "x")) {
+		t.Fatalf("%+v", lock)
+	}
+}
+
+func TestInstallRemovesPathsNoLongerShipped(t *testing.T) {
+	dir := newTestProject(t)
+	lib := newFakeLibrary(t)
+	os.MkdirAll(filepath.Join(dir, "addons", "old"), 0o755)
+	os.WriteFile(filepath.Join(dir, godot.PackageFileName), []byte("[assets]\ndialogic={ library=\"1234\" }\n"), 0o644)
+	godot.Lock{"dialogic": {Source: "library:1", URL: "u", SHA256: "s", Paths: []string{"addons/old"}}}.Save(dir)
+
+	if err := run(t, lib, "install"); err != nil {
+		t.Fatal(err)
+	}
+	if exists(filepath.Join(dir, "addons", "old")) || !exists(filepath.Join(dir, "addons", "x")) {
+		t.Fatal("old path not cleaned up")
+	}
+}

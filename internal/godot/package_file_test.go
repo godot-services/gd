@@ -133,3 +133,30 @@ func TestPackageSaveKeepsNestedSectionUnchanged(t *testing.T) {
 		t.Fatalf("empty keys added:\n%s", out)
 	}
 }
+
+func TestPackageDuplicateSectionsAreMerged(t *testing.T) {
+	p, err := NewPackage([]byte("[assets]\na={ library=\"1\" }\n\n[dev_assets]\n\n[assets]\nc={ library=\"2\" }\n"))
+	if err != nil || p.Assets["a"].Library != "1" || p.Assets["c"].Library != "2" {
+		t.Fatal(p, err)
+	}
+}
+
+func TestPackageQuotedValuesWithCommentChars(t *testing.T) {
+	dir := t.TempDir()
+	writePackageFile(t, dir, "[package]\nname=\"A;B#C\"\n\n[assets]\nfoo={ git=\"https://github.com/a/b\", version=\"rel#1\" }\n")
+
+	p, err := LoadPackage(dir)
+	if err != nil || p.Package.Name != "A;B#C" || p.Assets["foo"].Version != "rel#1" {
+		t.Fatal(p, err)
+	}
+	p.AddAsset("bar", PackageAssetConfiguration{Library: "2"}, false)
+	if err := p.Save(dir); err != nil {
+		t.Fatal(err)
+	}
+
+	q, err := LoadPackage(dir)
+	if err != nil || q.Package.Name != "A;B#C" || q.Assets["foo"].Version != "rel#1" || q.Assets["bar"].Library != "2" {
+		out, _ := os.ReadFile(filepath.Join(dir, PackageFileName))
+		t.Fatalf("%+v %v\n%s", q, err, out)
+	}
+}

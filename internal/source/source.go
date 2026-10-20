@@ -19,6 +19,7 @@ const DefaultLibraryURL = "https://godotengine.org/asset-library/api"
 
 var (
 	ErrNoDownloadURL      = errors.New("asset has no download url")
+	ErrInsecureURL        = errors.New("git URL must use https")
 	ErrUnsupportedGitHost = errors.New("unsupported git host (supported: github.com, gitlab.com, codeberg.org)")
 
 	nonSlugRe = regexp.MustCompile(`[^a-z0-9_]+`)
@@ -79,6 +80,10 @@ func GitArchiveURL(repo, ref string) (string, error) {
 	u, err := url.Parse(repo)
 	if err != nil {
 		return "", err
+	}
+
+	if u.Scheme != "https" {
+		return "", fmt.Errorf("%w: %s", ErrInsecureURL, repo)
 	}
 
 	switch u.Host {

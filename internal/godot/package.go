@@ -85,8 +85,9 @@ func (a PackageAssetConfiguration) Validate() error {
 }
 
 var packageLoadOptions = ini.LoadOptions{
-	AllowNestedValues:      true,
-	AllowNonUniqueSections: true,
+	AllowNestedValues: true,
+	// only " ;" / " #" start a comment, so quoted values may contain ; and #
+	SpaceBeforeInlineComment: true,
 }
 
 // LoadPackage reads package.godot from dir; a missing file yields an empty package.

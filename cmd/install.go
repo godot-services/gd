@@ -29,6 +29,21 @@ func newInstallCmd(opts *options) *cobra.Command {
 			}
 			slices.Sort(names)
 
+			// stale entries first: a renamed asset must not see its old folder as foreign
+			for name, entry := range lock {
+				if _, ok := assets[name]; ok {
+					continue
+				}
+				if err := install.Remove(dir, entry.Paths); err != nil {
+					return err
+				}
+				delete(lock, name)
+				if err := lock.Save(dir); err != nil {
+					return err
+				}
+				cmd.Printf("removed %s\n", name)
+			}
+
 			for _, name := range names {
 				a := assets[name]
 				var entry *godot.LockEntry
@@ -50,20 +65,6 @@ func newInstallCmd(opts *options) *cobra.Command {
 					return err
 				}
 				cmd.Printf("installed %s (%s) -> %s\n", name, installed.VersionString, strings.Join(installed.Paths, ", "))
-			}
-
-			for name, entry := range lock {
-				if _, ok := assets[name]; ok {
-					continue
-				}
-				if err := install.Remove(dir, entry.Paths); err != nil {
-					return err
-				}
-				delete(lock, name)
-				if err := lock.Save(dir); err != nil {
-					return err
-				}
-				cmd.Printf("removed %s\n", name)
 			}
 
 			return nil

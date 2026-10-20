@@ -85,3 +85,9 @@ func TestRepoName(t *testing.T) {
 		t.Fatal(got)
 	}
 }
+
+func TestGitArchiveURLRequiresHTTPS(t *testing.T) {
+	if _, err := GitArchiveURL("http://github.com/a/b", "v1"); !errors.Is(err, ErrInsecureURL) {
+		t.Fatal(err)
+	}
+}

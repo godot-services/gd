@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"os"
+	"slices"
 
 	"github.com/godot-services/gd/internal/godot"
 	"github.com/godot-services/gd/internal/install"
@@ -47,6 +48,17 @@ func installAsset(ctx context.Context, lib source.Library, projectDir string, a 
 
 	paths, err := install.Extract(zipPath, projectDir, e.Paths)
 	if err != nil {
+		return godot.LockEntry{}, err
+	}
+
+	// folders the asset no longer ships would otherwise stay behind without an owner
+	var dropped []string
+	for _, p := range e.Paths {
+		if !slices.Contains(paths, p) {
+			dropped = append(dropped, p)
+		}
+	}
+	if err := install.Remove(projectDir, dropped); err != nil {
 		return godot.LockEntry{}, err
 	}
 
