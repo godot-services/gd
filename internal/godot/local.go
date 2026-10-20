@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"gopkg.in/ini.v1"
 )
 
 const LocalFileName = "package.local.godot"
@@ -30,16 +32,23 @@ func MajorMinor(version string) string {
 	return majorMinorRe.FindString(version)
 }
 
-// LoadLocalEditor returns the editor name from package.local.godot; a missing file yields "".
+// LoadLocalEditor returns [editor] name from package.local.godot; a missing file yields "".
 func LoadLocalEditor(dir string) (string, error) {
 	data, err := os.ReadFile(filepath.Join(dir, LocalFileName))
 	if errors.Is(err, os.ErrNotExist) {
 		return "", nil
 	}
-	return strings.TrimSpace(string(data)), err
+	if err != nil {
+		return "", err
+	}
+	cfg, err := ini.Load(data)
+	if err != nil {
+		return "", err
+	}
+	return cfg.Section("editor").Key("name").String(), nil
 }
 
-// SaveLocalEditor writes the editor name to package.local.godot; an empty name removes the file.
+// SaveLocalEditor writes [editor] name to package.local.godot; an empty name removes the file.
 func SaveLocalEditor(dir, name string) error {
 	path := filepath.Join(dir, LocalFileName)
 	if name == "" {
@@ -48,5 +57,7 @@ func SaveLocalEditor(dir, name string) error {
 		}
 		return nil
 	}
-	return os.WriteFile(path, []byte(name+"\n"), 0o644)
+	cfg := ini.Empty()
+	cfg.Section("editor").Key("name").SetValue(name)
+	return cfg.SaveTo(path)
 }

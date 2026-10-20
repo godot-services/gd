@@ -92,3 +92,11 @@ func TestMainScene(t *testing.T) {
 		t.Errorf("err = %v, want ErrNoMainScene", err)
 	}
 }
+
+func TestLoadLocalEditorSpecFormat(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, LocalFileName), []byte("[editor]\nname=\"custombuild-x\"\n"), 0o644)
+	if got, err := LoadLocalEditor(dir); err != nil || got != "custombuild-x" {
+		t.Fatalf("got %q, %v", got, err)
+	}
+}
