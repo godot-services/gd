@@ -222,3 +222,28 @@ func TestExtractRejectsCommaInFolderName(t *testing.T) {
 		t.Fatalf("project not empty: %v", entries)
 	}
 }
+
+func TestExtractKeepsExecutableBit(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "asset.zip")
+	f, _ := os.Create(path)
+	w := zip.NewWriter(f)
+	for name, mode := range map[string]os.FileMode{"repo/addons/x/run.sh": 0o755, "repo/addons/x/a.gd": 0o600} {
+		h := &zip.FileHeader{Name: name, Method: zip.Deflate}
+		h.SetMode(mode)
+		fw, _ := w.CreateHeader(h)
+		fw.Write([]byte("x"))
+	}
+	w.Close()
+	f.Close()
+
+	project := t.TempDir()
+	if _, err := Extract(path, project, nil); err != nil {
+		t.Fatal(err)
+	}
+	for name, want := range map[string]os.FileMode{"run.sh": 0o755, "a.gd": 0o644} {
+		info, err := os.Stat(filepath.Join(project, "addons", "x", name))
+		if err != nil || info.Mode().Perm() != want {
+			t.Errorf("%s: %v %v, want %v", name, info.Mode().Perm(), err, want)
+		}
+	}
+}

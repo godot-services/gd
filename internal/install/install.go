@@ -203,7 +203,8 @@ func extractFile(f *zip.File, target string) error {
 	}
 	defer src.Close()
 
-	dst, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
+	// keep only the executable bits from the zip, everything else is 0644
+	dst, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644|f.Mode().Perm()&0o111)
 	if err != nil {
 		return err
 	}
