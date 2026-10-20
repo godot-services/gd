@@ -1,13 +1,16 @@
 package cmd
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"maps"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"slices"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/godot-services/gd/internal/editor"
@@ -17,7 +20,8 @@ import (
 
 func newEditorCmd(opts *options) *cobra.Command {
 	c := &cobra.Command{Use: "editor", Short: "Manage Godot editors"}
-	c.AddCommand(newEditorInstallCmd(opts), newEditorUninstallCmd(), newEditorListCmd(), newEditorAvailableCmd(opts))
+	c.AddCommand(newEditorInstallCmd(opts), newEditorUninstallCmd(), newEditorListCmd(), newEditorAvailableCmd(opts),
+		newEditorLinkCmd(), newEditorUnlinkCmd(), newEditorDefaultCmd(), newEditorUseCmd())
 	return c
 }
 
@@ -180,4 +184,168 @@ func newEditorAvailableCmd(opts *options) *cobra.Command {
 	}
 	c.Flags().BoolVar(&pre, "pre", false, "include rc, beta and dev releases")
 	return c
+}
+
+var aliasRe = regexp.MustCompile(`^[a-z0-9_-]+$`)
+
+func loadRegistry() (*editor.Registry, string, error) {
+	dataDir, err := editor.DataDir()
+	if err != nil {
+		return nil, "", err
+	}
+	reg, err := editor.LoadRegistry(dataDir)
+	return reg, dataDir, err
+}
+
+func newEditorLinkCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "link <alias> <path>",
+		Short: "Register a Godot editor installed elsewhere",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			alias := args[0]
+			if !aliasRe.MatchString(alias) {
+				return fmt.Errorf("invalid alias %q: use lowercase letters, digits, - and _", alias)
+			}
+			if alias == "aliases" {
+				return editor.ErrReservedName
+			}
+			path, err := filepath.Abs(args[1])
+			if err != nil {
+				return err
+			}
+			fi, err := os.Stat(path)
+			if err != nil {
+				return err
+			}
+			if runtime.GOOS == "darwin" && fi.IsDir() && strings.HasSuffix(path, ".app") {
+				path = filepath.Join(path, "Contents", "MacOS", "Godot")
+			}
+			reg, dataDir, err := loadRegistry()
+			if err != nil {
+				return err
+			}
+			if _, ok := reg.Editors[alias]; ok {
+				return fmt.Errorf("editor %q already exists", alias)
+			}
+			version, dotnet, build, err := editor.ProbeVersion(cmd.Context(), path)
+			if err != nil {
+				return err
+			}
+			reg.Editors[alias] = editor.Editor{Name: alias, Path: path, Version: version, Dotnet: dotnet, Build: build, Source: "linked"}
+			if err := reg.Save(dataDir); err != nil {
+				return err
+			}
+			cmd.Printf("linked %s (%s, %s) -> %s\n", alias, version, build, path)
+			return nil
+		},
+	}
+}
+
+func newEditorUnlinkCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "unlink <alias>",
+		Short: "Forget a linked editor (its files are kept)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			name := args[0]
+			reg, dataDir, err := loadRegistry()
+			if err != nil {
+				return err
+			}
+			e, ok := reg.Editors[name]
+			if !ok {
+				return fmt.Errorf("%w %q", editor.ErrUnknownEditor, name)
+			}
+			if e.Source != "linked" {
+				return fmt.Errorf("editor %q is managed, use gd editor uninstall %s", name, name)
+			}
+			delete(reg.Editors, name)
+			if reg.Default == name {
+				reg.Default = ""
+			}
+			if err := reg.Save(dataDir); err != nil {
+				return err
+			}
+			cmd.Printf("unlinked %s\n", name)
+			return nil
+		},
+	}
+}
+
+func newEditorDefaultCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "default <name>",
+		Short: "Set the default editor",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			reg, dataDir, err := loadRegistry()
+			if err != nil {
+				return err
+			}
+			if _, ok := reg.Editors[args[0]]; !ok {
+				return fmt.Errorf("%w %q", editor.ErrUnknownEditor, args[0])
+			}
+			reg.Default = args[0]
+			if err := reg.Save(dataDir); err != nil {
+				return err
+			}
+			cmd.Printf("default editor: %s\n", args[0])
+			return nil
+		},
+	}
+}
+
+func newEditorUseCmd() *cobra.Command {
+	var clear bool
+	c := &cobra.Command{
+		Use:   "use [name]",
+		Short: "Use a specific editor for this project on this machine",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if clear == (len(args) == 1) {
+				return errors.New("pass an editor name or --clear")
+			}
+			project, err := godot.NewProject(".")
+			if err != nil {
+				return err
+			}
+			if clear {
+				return godot.SaveLocalEditor(project.Location, "")
+			}
+			reg, _, err := loadRegistry()
+			if err != nil {
+				return err
+			}
+			if _, ok := reg.Editors[args[0]]; !ok {
+				return fmt.Errorf("%w %q", editor.ErrUnknownEditor, args[0])
+			}
+			if err := godot.SaveLocalEditor(project.Location, args[0]); err != nil {
+				return err
+			}
+			cmd.Printf("using editor %s for this project\n", args[0])
+			if !gitignored(project.Location) {
+				cmd.PrintErrln("hint: add " + godot.LocalFileName + " to .gitignore")
+			}
+			return nil
+		},
+	}
+	c.Flags().BoolVar(&clear, "clear", false, "remove the per-machine editor choice")
+	return c
+}
+
+// gitignored reports true when there is no .gitignore to extend or it already lists the local file.
+func gitignored(dir string) bool {
+	f, err := os.Open(filepath.Join(dir, ".gitignore"))
+	if err != nil {
+		return true
+	}
+	defer f.Close()
+	sc := bufio.NewScanner(f)
+	for sc.Scan() {
+		if l := strings.TrimSpace(sc.Text()); l == godot.LocalFileName || l == "/"+godot.LocalFileName {
+			return true
+		}
+	}
+	return false
 }
