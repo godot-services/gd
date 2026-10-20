@@ -5,13 +5,22 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 )
 
 const (
 	ProjectFileName = "project.godot"
 )
 
-var ErrNoGodotProject = errors.New("no project.godot found")
+var (
+	ErrNoGodotProject = errors.New("no project.godot found")
+	ErrNoGodotVersion = errors.New("no Godot version in project.godot, pass --godot")
+
+	// only this line is read: project.godot may hold multi-line values ini.v1 cannot parse
+	featuresRe     = regexp.MustCompile(`(?m)^config/features=PackedStringArray\(([^)]*)\)`)
+	quotedRe       = regexp.MustCompile(`"([^"]*)"`)
+	godotVersionRe = regexp.MustCompile(`^\d+\.\d+(\.\d+)?$`)
+)
 
 type Project struct {
 	Location string
@@ -59,4 +68,22 @@ func locationDirectory(location string) (string, error) {
 	}
 
 	return filepath.Dir(location), nil
+}
+
+// GodotVersion returns the engine version from config/features in project.godot, e.g. "4.3".
+func (p *Project) GodotVersion() (string, error) {
+	source, err := os.ReadFile(filepath.Join(p.Location, ProjectFileName))
+	if err != nil {
+		return "", err
+	}
+
+	if features := featuresRe.FindSubmatch(source); features != nil {
+		for _, entry := range quotedRe.FindAllSubmatch(features[1], -1) {
+			if godotVersionRe.Match(entry[1]) {
+				return string(entry[1]), nil
+			}
+		}
+	}
+
+	return "", ErrNoGodotVersion
 }

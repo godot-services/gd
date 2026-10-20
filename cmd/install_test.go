@@ -177,3 +177,24 @@ func TestInstallUsesCache(t *testing.T) {
 		t.Fatalf("zip downloaded %d times", lib.zipHits)
 	}
 }
+
+func TestInstallNoDevSkipsDevAssets(t *testing.T) {
+	dir := newTestProject(t)
+	lib := newFakeLibrary(t)
+	os.WriteFile(filepath.Join(dir, godot.PackageFileName), []byte("[assets]\nrun={ library=\"1234\" }\n\n[dev_assets]\ntool={ library=\"1234\" }\n"), 0o644)
+	devEntry := godot.LockEntry{Source: "library:1234", URL: "u", SHA256: "s", Paths: []string{"addons/devtool"}}
+	godot.Lock{"tool": devEntry}.Save(dir)
+	os.MkdirAll(filepath.Join(dir, "addons", "devtool"), 0o755)
+
+	if err := run(t, lib, "install", "--no-dev"); err != nil {
+		t.Fatal(err)
+	}
+
+	lock, _ := godot.LoadLock(dir)
+	if !exists(filepath.Join(dir, "addons", "x")) || !exists(filepath.Join(dir, "addons", "devtool")) {
+		t.Fatal("wrong folders")
+	}
+	if !reflect.DeepEqual(lock["tool"], devEntry) || lock["run"].SHA256 == "" || lib.assetHits != 1 {
+		t.Fatalf("lock %+v, asset requests %d", lock, lib.assetHits)
+	}
+}

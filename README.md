@@ -20,7 +20,12 @@ Run `gd` in the folder that contains `project.godot`.
 gd add 1709 --dev                                         # asset library ID
 gd add https://github.com/foo/tool --version v1.2.0       # git (GitHub, GitLab, Codeberg)
 gd install                                                # install everything from package-lock.godot
+gd install --no-dev                                       # skip dev_assets (CI, exports)
 gd remove tool
+
+gd search dialogue                                        # find asset IDs (Godot version from project.godot or --godot)
+gd outdated                                               # library assets with a newer version; exits 1 if any
+gd update [name...]                                       # move assets to their latest version
 ```
 
 `gd add` writes `package.godot` and `package-lock.godot`; commit both. `gd install`
@@ -69,3 +74,6 @@ and the [decision records](/docs/adr/README.md) for why it works this way.
 | ------- | --------------------------------------------------- | ----- |
 | add     | shortcut to add on asset to godot project           | done  |
 | install | shortcut to install defined assets of godot project | done  |
+| search   | search addons in the asset library                  | done  |
+| outdated | show library assets with a newer version            | done  |
+| update   | update assets to their latest version               | done  |

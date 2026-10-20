@@ -104,3 +104,30 @@ func TestGitArchiveURLEscapesRef(t *testing.T) {
 		t.Fatal(id)
 	}
 }
+
+func TestLibrarySearch(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		if r.URL.Path != "/asset" || q.Get("type") != "addon" || q.Get("filter") != "gut" || q.Get("godot_version") != "4.3" || q.Get("max_results") != "5" {
+			t.Errorf("unexpected request %s", r.URL)
+		}
+		w.Write([]byte(`{"result":[
+			{"asset_id":"1709","title":"GUT","version_string":"9.6.1","godot_version":"4.3","cost":"MIT","support_level":"community"},
+			{"asset_id":"2","title":"Other","version_string":"1.0","godot_version":"4.2","cost":"GPLv3","support_level":"testing"}
+		],"total_items":7}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	results, total, err := Library{BaseURL: srv.URL, Client: srv.Client()}.Search(context.Background(), "gut", "4.3", 5)
+	want := SearchResult{AssetID: "1709", Title: "GUT", VersionString: "9.6.1", GodotVersion: "4.3", Cost: "MIT", SupportLevel: "community"}
+	if err != nil || total != 7 || len(results) != 2 || results[0] != want || results[1].AssetID != "2" {
+		t.Fatal(results, total, err)
+	}
+}
+
+func TestLibrarySearchError(t *testing.T) {
+	lib := fakeLibrary(t, 500, "")
+	if _, _, err := lib.Search(context.Background(), "x", "4.3", 5); err == nil {
+		t.Fatal("expected error")
+	}
+}

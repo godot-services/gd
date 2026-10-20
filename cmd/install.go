@@ -16,7 +16,9 @@ import (
 var errLockWithoutHash = errors.New("lock entry has no sha256, run gd remove and gd add again")
 
 func newInstallCmd(opts *options) *cobra.Command {
-	return &cobra.Command{
+	var noDev bool
+
+	cmd := &cobra.Command{
 		Use:   "install",
 		Short: "Install all assets of package.godot as pinned in package-lock.godot",
 		Args:  cobra.NoArgs,
@@ -27,10 +29,15 @@ func newInstallCmd(opts *options) *cobra.Command {
 			}
 
 			lib := opts.library()
-			assets := pkg.AllAssets()
-			// stale entries first: a renamed asset must not see its old folder as foreign
+			known, assets := pkg.AllAssets(), pkg.AllAssets()
+			if noDev {
+				assets = pkg.Assets
+			}
+
+			// stale entries first: a renamed asset must not see its old folder as foreign.
+			// Dev assets are never stale, also not with --no-dev.
 			for name, entry := range lock {
-				if _, ok := assets[name]; ok {
+				if _, ok := known[name]; ok {
 					continue
 				}
 				if err := install.Remove(dir, entry.Paths); err != nil {
@@ -56,13 +63,8 @@ func newInstallCmd(opts *options) *cobra.Command {
 					entry = &e
 				}
 
-				installed, err := installAsset(cmd.Context(), lib, dir, a, entry)
+				installed, err := installAndLock(cmd.Context(), lib, dir, lock, name, a, entry)
 				if err != nil {
-					return err
-				}
-				// save after every asset so a later failure keeps what is installed
-				lock[name] = installed
-				if err := lock.Save(dir); err != nil {
 					return err
 				}
 				cmd.Printf("installed %s (%s) -> %s\n", name, installed.VersionString, strings.Join(installed.Paths, ", "))
@@ -71,4 +73,8 @@ func newInstallCmd(opts *options) *cobra.Command {
 			return nil
 		},
 	}
+
+	cmd.Flags().BoolVar(&noDev, "no-dev", false, "skip dev_assets (they are neither installed nor removed)")
+
+	return cmd
 }

@@ -21,5 +21,6 @@ supersedes the old one.
 | [0012](0012-single-install-path.md)           | One install path for add and install   | amended by 0013 |
 | [0013](0013-hardening-after-mvp-audit.md)     | Hardening after the MVP audit          | accepted |
 | [0014](0014-zip-cache.md)                     | Cache downloaded zips by SHA-256       | accepted |
+| [0015](0015-comfort-commands.md)              | Comfort commands: search, --no-dev, outdated, update | accepted |
 
 Template: copy [template.md](template.md).

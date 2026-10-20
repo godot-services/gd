@@ -64,6 +64,17 @@ func installAsset(ctx context.Context, lib source.Library, projectDir string, a 
 	return e, nil
 }
 
+// installAndLock installs one asset and saves its lock entry right away, so a
+// later failure keeps an accurate record of what is installed.
+func installAndLock(ctx context.Context, lib source.Library, dir string, lock godot.Lock, name string, a godot.PackageAssetConfiguration, entry *godot.LockEntry) (godot.LockEntry, error) {
+	installed, err := installAsset(ctx, lib, dir, a, entry)
+	if err != nil {
+		return godot.LockEntry{}, err
+	}
+	lock[name] = installed
+	return installed, lock.Save(dir)
+}
+
 // fetch uses the zip cache in <user cache dir>/gd; without a usable cache dir it
 // downloads into a temp dir. cleanup removes temp downloads, cached zips stay.
 func fetch(ctx context.Context, lib source.Library, e godot.LockEntry) (zipPath, sum string, cleanup func(), err error) {
