@@ -12,7 +12,7 @@ import (
 )
 
 // errOutdated makes gd outdated exit with 1, like npm outdated, so CI can react.
-var errOutdated = errors.New("assets are outdated")
+var errOutdated = errors.New("outdated")
 
 func newOutdatedCmd(opts *options) *cobra.Command {
 	return &cobra.Command{
@@ -67,8 +67,11 @@ func newOutdatedCmd(opts *options) *cobra.Command {
 				return err
 			}
 
-			if outdated > 0 {
-				return fmt.Errorf("%d %w", outdated, errOutdated)
+			switch {
+			case outdated == 1:
+				return fmt.Errorf("1 asset is %w", errOutdated)
+			case outdated > 1:
+				return fmt.Errorf("%d assets are %w", outdated, errOutdated)
 			}
 			return nil
 		},

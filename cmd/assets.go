@@ -75,11 +75,19 @@ func installAndLock(ctx context.Context, lib source.Library, dir string, lock go
 	return installed, lock.Save(dir)
 }
 
+// cacheDir is where downloaded zips are cached (ADR 0014).
+func cacheDir() (string, error) {
+	dir, err := os.UserCacheDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "gd"), nil
+}
+
 // fetch uses the zip cache in <user cache dir>/gd; without a usable cache dir it
 // downloads into a temp dir. cleanup removes temp downloads, cached zips stay.
 func fetch(ctx context.Context, lib source.Library, e godot.LockEntry) (zipPath, sum string, cleanup func(), err error) {
-	if dir, err := os.UserCacheDir(); err == nil {
-		cache := filepath.Join(dir, "gd")
+	if cache, err := cacheDir(); err == nil {
 		if err := os.MkdirAll(cache, 0o755); err == nil {
 			zipPath, sum, err := install.FetchCached(ctx, lib.Client, e.URL, e.SHA256, cache)
 			return zipPath, sum, func() {}, err
