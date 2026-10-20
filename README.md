@@ -49,15 +49,15 @@ gd editor list
 gd editor link <alias> <path>                             # register an editor you installed yourself
 gd editor unlink <alias>
 gd editor default <name>                                  # global default editor
-gd editor use <name>                                      # pin the editor for this project (package.godot)
-gd editor use --clear
+gd editor use <name>                                      # pick an editor on this machine (package.local.godot, not committed)
+gd editor use --clear                                     # drop that pick again
 gd editor uninstall <name>
 ```
 
 ## Run
 
 ```sh
-gd open [--detach]                                        # open the project in the editor
+gd open [--detach]                                        # open the project in the editor (long form: gd editor open)
 gd start [scene] [--detach]                               # run the project (or a scene)
 gd godot -- --version                                     # run the project's editor with any arguments
 ```
@@ -106,7 +106,7 @@ See [ADR 0017](/docs/adr/0017-editor-management.md),
 | editor list      | list current installed editor versions         | done  |
 | editor install   | install godot editor for specified version     | done  |
 | editor uninstall | uninstall godot editor for specified version   | done  |
-| editor default   | set default godot editor for specified version | done as `gd editor default` |
+| editor default   | set default godot editor for specified version | done  |
 
 # shortcut commands
 
