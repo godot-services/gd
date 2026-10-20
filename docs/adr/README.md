@@ -10,14 +10,15 @@ supersedes the old one.
 | [0001](0001-record-architecture-decisions.md) | Record architecture decisions          | accepted |
 | [0002](0002-mvp-scope.md)                     | MVP scope: install addons only         | accepted |
 | [0003](0003-ini-for-package-godot.md)         | INI format for `package.godot`         | accepted |
-| [0004](0004-lockfile-with-sha256.md)          | Lockfile with SHA-256 per asset        | accepted |
+| [0004](0004-lockfile-with-sha256.md)          | Lockfile with SHA-256 per asset        | amended by 0013 |
 | [0005](0005-lockfile-name.md)                 | Lockfile name `package-lock.godot`     | accepted |
 | [0006](0006-git-sources-via-archive-urls.md)  | Git sources via archive URLs, https only | accepted |
 | [0007](0007-install-only-addons.md)           | Install only `addons/<name>/**`        | accepted |
-| [0008](0008-ownership-of-installed-folders.md) | gd only touches folders it installed  | accepted |
+| [0008](0008-ownership-of-installed-folders.md) | gd only touches folders it installed  | amended by 0013 |
 | [0009](0009-write-package-godot-with-ini-v1.md) | Write `package.godot` with gopkg.in/ini.v1 | accepted |
-| [0010](0010-default-asset-names.md)           | Default asset names from titles        | accepted |
+| [0010](0010-default-asset-names.md)           | Default asset names from titles        | amended by 0013 |
 | [0011](0011-install-reconciliation.md)        | How `gd install` reconciles package and lock | accepted |
-| [0012](0012-single-install-path.md)           | One install path for add and install   | accepted |
+| [0012](0012-single-install-path.md)           | One install path for add and install   | amended by 0013 |
+| [0013](0013-hardening-after-mvp-audit.md)     | Hardening after the MVP audit          | accepted |
 
 Template: copy [template.md](template.md).
