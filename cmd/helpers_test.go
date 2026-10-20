@@ -175,7 +175,28 @@ func newFakeBuilds(t *testing.T) string {
 		}
 		mu.Unlock()
 		sum := sha512.Sum512(z)
+		tpzFor := func(mono bool) []byte {
+			mu.Lock()
+			defer mu.Unlock()
+			key := fmt.Sprint(tag, "|tpz|", mono)
+			if zips[key] == nil {
+				v := strings.Replace(tag, "-", ".", 1)
+				if mono {
+					v += ".mono"
+				}
+				zips[key] = zipBytes(t, map[string]string{"templates/version.txt": v + "\n", "templates/linux_release.x86_64": "tpl"})
+			}
+			return zips[key]
+		}
+		if strings.HasSuffix(name, ".tpz") {
+			w.Write(tpzFor(strings.Contains(name, "_mono_")))
+			return
+		}
 		if name == "SHA512-SUMS.txt" {
+			for _, mono := range []bool{false, true} {
+				ts := sha512.Sum512(tpzFor(mono))
+				fmt.Fprintf(w, "%s  %s\n", hex.EncodeToString(ts[:]), "Godot_v"+tag+map[bool]string{true: "_mono", false: ""}[mono]+"_export_templates.tpz")
+			}
 			for _, mono := range []string{"", "mono_"} {
 				for _, s := range suffixes {
 					n := "Godot_v" + tag + strings.Replace(s, "_", "_"+mono, 1)

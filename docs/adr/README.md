@@ -25,5 +25,6 @@ supersedes the old one.
 | [0016](0016-cache-commands.md)                | Cache commands                         | accepted |
 | [0017](0017-editor-management.md)            | Editor management: godot-builds, managed and linked editors | accepted |
 | [0018](0018-godot-version-spec.md)            | Godot version spec and local editor choice | accepted |
+| [0019](0019-export-templates.md)               | Export templates: source, verification, target dirs | accepted |
 
 Template: copy [template.md](template.md).
