@@ -31,7 +31,7 @@ var (
 	ErrAssetExists         = errors.New("asset already exists")
 	ErrAssetNotFound       = errors.New("asset not found")
 
-	assetValueRe         = regexp.MustCompile(`(\w+)="([^"]+)"`)
+	assetValueRe = regexp.MustCompile(`(\w+)="([^"]+)"`)
 )
 
 type Package struct {
