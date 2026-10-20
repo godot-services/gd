@@ -154,7 +154,8 @@ func Extract(zipPath, projectDir string, owned []string) ([]string, error) {
 func Remove(projectDir string, paths []string) error {
 	for _, p := range paths {
 		clean := path.Clean(p)
-		if clean != p || !strings.HasPrefix(clean, addonsDir+"/") || strings.Contains(clean, "..") {
+		// a clean path with the addons/ prefix cannot contain a ".." segment
+		if clean != p || !strings.HasPrefix(clean, addonsDir+"/") {
 			return fmt.Errorf("%w: %s", ErrUnsafePath, p)
 		}
 	}
