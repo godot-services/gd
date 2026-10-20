@@ -44,11 +44,7 @@ func (l Library) Resolve(ctx context.Context, id string) (Resolved, error) {
 		return Resolved{}, err
 	}
 
-	client := l.Client
-	if client == nil {
-		client = http.DefaultClient
-	}
-	resp, err := client.Do(req)
+	resp, err := l.Client.Do(req)
 	if err != nil {
 		return Resolved{}, err
 	}

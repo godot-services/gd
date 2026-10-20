@@ -2,6 +2,7 @@ package godot
 
 import (
 	"errors"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -67,13 +68,7 @@ func (l Lock) Save(dir string) error {
 	}
 
 	cfg := ini.Empty()
-	names := make([]string, 0, len(l))
-	for name := range l {
-		names = append(names, name)
-	}
-	slices.Sort(names)
-
-	for _, name := range names {
+	for _, name := range slices.Sorted(maps.Keys(l)) {
 		entry := l[name]
 		section, err := cfg.NewSection(name)
 		if err != nil {

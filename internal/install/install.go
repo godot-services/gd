@@ -154,7 +154,8 @@ func Extract(zipPath, projectDir string, owned []string) ([]string, error) {
 	slices.Sort(tops)
 
 	for _, top := range tops {
-		_, err := os.Stat(filepath.Join(projectDir, filepath.FromSlash(top)))
+		// Lstat: a dangling symlink still counts as an existing folder
+		_, err := os.Lstat(filepath.Join(projectDir, filepath.FromSlash(top)))
 		if err == nil && !slices.Contains(owned, top) {
 			return nil, fmt.Errorf("%w: %s", ErrForeignPath, top)
 		}

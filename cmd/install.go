@@ -3,6 +3,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -27,12 +28,6 @@ func newInstallCmd(opts *options) *cobra.Command {
 
 			lib := opts.library()
 			assets := pkg.AllAssets()
-			names := make([]string, 0, len(assets))
-			for name := range assets {
-				names = append(names, name)
-			}
-			slices.Sort(names)
-
 			// stale entries first: a renamed asset must not see its old folder as foreign
 			for name, entry := range lock {
 				if _, ok := assets[name]; ok {
@@ -48,7 +43,7 @@ func newInstallCmd(opts *options) *cobra.Command {
 				cmd.Printf("removed %s\n", name)
 			}
 
-			for _, name := range names {
+			for _, name := range slices.Sorted(maps.Keys(assets)) {
 				a := assets[name]
 				var entry *godot.LockEntry
 				if e, ok := lock[name]; ok {

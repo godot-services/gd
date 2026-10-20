@@ -5,7 +5,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newRemoveCmd(_ *options) *cobra.Command {
+func newRemoveCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "remove <name>",
 		Short: "Remove an asset and its installed addons",

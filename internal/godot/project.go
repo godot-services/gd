@@ -40,16 +40,12 @@ func hasGodotProject(location string) error {
 }
 
 func normalizeLocation(location string) (string, error) {
-	if filepath.IsAbs(location) {
-		return locationDirectory(location)
-	}
-
-	cwd, err := os.Getwd()
+	abs, err := filepath.Abs(location)
 	if err != nil {
 		return location, err
 	}
 
-	return locationDirectory(filepath.Join(cwd, location))
+	return locationDirectory(abs)
 }
 
 func locationDirectory(location string) (string, error) {

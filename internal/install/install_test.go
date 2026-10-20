@@ -272,3 +272,16 @@ func TestFetchCachedUsesVerifiedCache(t *testing.T) {
 		t.Fatalf("hits %d, %v", hits, err)
 	}
 }
+
+func TestExtractDanglingSymlinkIsForeign(t *testing.T) {
+	project := t.TempDir()
+	os.MkdirAll(filepath.Join(project, "addons"), 0o755)
+	if err := os.Symlink(filepath.Join(project, "missing"), filepath.Join(project, "addons", "x")); err != nil {
+		t.Skip(err)
+	}
+	z := makeZip(t, map[string]string{"repo/addons/x/a.gd": "a"})
+
+	if _, err := Extract(z, project, nil); !errors.Is(err, ErrForeignPath) {
+		t.Fatal(err)
+	}
+}
