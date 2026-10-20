@@ -44,6 +44,11 @@ func newTemplatesInstallCmd(opts *options) *cobra.Command {
 		Short: "Download and install export templates",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 1 {
+				if err := godot.ValidateVersion(args[0]); err != nil {
+					return err
+				}
+			}
 			_, pkg, _, perr := loadProject()
 			var version string
 			if len(args) == 1 {

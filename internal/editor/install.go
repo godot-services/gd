@@ -206,6 +206,9 @@ func FindExecutable(dir, goos string) (gui, console string, err error) {
 // Install downloads, verifies and unpacks an official editor into <dataDir>/editors/<name>.
 // The caller registers the returned entry.
 func Install(ctx context.Context, c godotbuilds.Client, dataDir, version string, dotnet bool, goos, goarch string) (Editor, error) {
+	if err := godot.ValidateVersion(version); err != nil {
+		return Editor{}, err
+	}
 	name := version
 	if dotnet {
 		name += "-dotnet"

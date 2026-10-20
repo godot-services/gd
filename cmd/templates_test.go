@@ -1,6 +1,10 @@
 package cmd
 
 import (
+	"errors"
+	"github.com/godot-services/gd/internal/godot"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -97,5 +101,23 @@ func TestTemplatesInstallSelfContainedEditor(t *testing.T) {
 	}
 	if exists(filepath.Join(testTemplatesDir(t), "4.7.2.stable")) {
 		t.Error("also installed in the Godot data dir")
+	}
+}
+
+func TestInstallCommandsRejectInvalidVersion(t *testing.T) {
+	newTestProject(t)
+	hits := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { hits++ }))
+	defer srv.Close()
+	for _, c := range [][]string{{"templates", "install"}, {"editor", "install"}} {
+		for _, v := range []string{"3.5.3", "4.7.2-foo1", "../x", "3.6"} {
+			_, err := runEditor(t, srv.URL, append(c, v)...)
+			if !errors.Is(err, godot.ErrInvalidGodotVersion) {
+				t.Errorf("%v %s: err = %v", c, v, err)
+			}
+		}
+	}
+	if hits != 0 || exists(filepath.Join(filepath.Dir(testTemplatesDir(t)), "x")) {
+		t.Errorf("hits = %d", hits)
 	}
 }

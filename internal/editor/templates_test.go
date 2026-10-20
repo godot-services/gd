@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"slices"
 	"testing"
+
+	"github.com/godot-services/gd/internal/godot"
 )
 
 func tpz(t *testing.T, version string) []byte {
@@ -137,5 +139,42 @@ func TestSelfContainedTemplatesDir(t *testing.T) {
 func TestTemplatesDir(t *testing.T) {
 	if got := TemplatesDir("/g"); got != filepath.Join("/g", "export_templates") {
 		t.Error(got)
+	}
+}
+
+func TestInstallTemplatesVersionMismatch(t *testing.T) {
+	c := server(t, "Godot_v4.7.2-stable_export_templates.tpz", tpz(t, "4.6.0.stable"), "")
+	dir := t.TempDir()
+	old := filepath.Join(dir, "4.6.0.stable")
+	os.MkdirAll(old, 0o755)
+	os.WriteFile(filepath.Join(old, "keep"), nil, 0o644)
+	if _, err := InstallTemplates(context.Background(), c, "4.7.2-stable", false, dir, true); err == nil {
+		t.Fatal("want mismatch error")
+	}
+	if !exists(filepath.Join(old, "keep")) || exists(filepath.Join(dir, "4.7.2.stable")) {
+		t.Error("mismatch touched the templates dir")
+	}
+}
+
+func TestInstallTemplatesForceKeepsOnlyNew(t *testing.T) {
+	c := server(t, "Godot_v4.7.2-stable_export_templates.tpz", tpz(t, "4.7.2.stable"), "")
+	dir := t.TempDir()
+	old := filepath.Join(dir, "4.7.2.stable")
+	os.MkdirAll(old, 0o755)
+	os.WriteFile(filepath.Join(old, "stale"), nil, 0o644)
+	if _, err := InstallTemplates(context.Background(), c, "4.7.2-stable", false, dir, true); err != nil {
+		t.Fatal(err)
+	}
+	m, _ := filepath.Glob(filepath.Join(dir, "*"))
+	h, _ := filepath.Glob(filepath.Join(dir, ".*"))
+	if len(m) != 1 || len(h) != 0 || exists(filepath.Join(old, "stale")) {
+		t.Errorf("dir = %v %v", m, h)
+	}
+}
+
+func TestInstallRejectsInvalidVersion(t *testing.T) {
+	_, err := Install(context.Background(), server(t, "x", nil, ""), t.TempDir(), "../x", false, "linux", "amd64")
+	if !errors.Is(err, godot.ErrInvalidGodotVersion) {
+		t.Errorf("err = %v", err)
 	}
 }

@@ -34,6 +34,9 @@ func newEditorInstallCmd(opts *options) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var version string
 			if len(args) == 1 {
+				if err := godot.ValidateVersion(args[0]); err != nil {
+					return err
+				}
 				version = args[0]
 			} else {
 				_, pkg, _, err := loadProject()

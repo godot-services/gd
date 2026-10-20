@@ -2,6 +2,7 @@ package godot
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -18,6 +19,14 @@ var (
 	godotSpecRe  = regexp.MustCompile(`^4\.\d+(\.\d+)?(-(stable|rc\d+|beta\d+|dev\d+))?$`)
 	majorMinorRe = regexp.MustCompile(`^\d+\.\d+`)
 )
+
+// ValidateVersion checks v against the supported Godot 4 version spec.
+func ValidateVersion(v string) error {
+	if !godotSpecRe.MatchString(v) {
+		return fmt.Errorf("%q: %w", v, ErrInvalidGodotVersion)
+	}
+	return nil
+}
 
 // ReleaseTag maps a plain version to its godot-builds tag: 4.7.2 -> 4.7.2-stable.
 func ReleaseTag(version string) string {

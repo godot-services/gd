@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/godot-services/gd/internal/godot"
 	"github.com/godot-services/gd/internal/godotbuilds"
 )
 
@@ -56,8 +57,8 @@ func templatesName(tag string, dotnet bool) string {
 // templatesDir under the name from its version.txt. It returns the install path.
 func InstallTemplates(ctx context.Context, c godotbuilds.Client, tag string, dotnet bool, templatesDir string, force bool) (string, error) {
 	expected := templatesName(tag, dotnet)
-	if !templatesVersionRe.MatchString(expected) {
-		return "", fmt.Errorf("invalid Godot version %q", tag)
+	if err := godot.ValidateVersion(tag); err != nil {
+		return "", err
 	}
 	if _, err := os.Lstat(filepath.Join(templatesDir, expected)); err == nil && !force {
 		return "", fmt.Errorf("%w: %s", ErrTemplatesInstalled, expected)
@@ -89,19 +90,26 @@ func InstallTemplates(ctx context.Context, c godotbuilds.Client, tag string, dot
 		return "", fmt.Errorf("%s: %w", asset, err)
 	}
 	version := strings.TrimSpace(string(raw))
-	if !templatesVersionRe.MatchString(version) {
-		return "", fmt.Errorf("%s: invalid templates/version.txt %q", asset, version)
+	if version != expected {
+		return "", fmt.Errorf("%s: templates/version.txt is %q, expected %q", asset, version, expected)
 	}
-	final := filepath.Join(templatesDir, version)
-	if _, err := os.Lstat(final); err == nil {
+	final := filepath.Join(templatesDir, expected)
+	// the old dir moves into staging (removed by the defer) so a failed swap can restore it
+	oldDir := filepath.Join(staging, "old")
+	_, statErr := os.Lstat(final)
+	hadOld := statErr == nil
+	if hadOld {
 		if !force {
-			return "", fmt.Errorf("%w: %s", ErrTemplatesInstalled, version)
+			return "", fmt.Errorf("%w: %s", ErrTemplatesInstalled, expected)
 		}
-		if err := os.RemoveAll(final); err != nil {
+		if err := os.Rename(final, oldDir); err != nil {
 			return "", err
 		}
 	}
 	if err := os.Rename(filepath.Join(tree, "templates"), final); err != nil {
+		if hadOld {
+			os.Rename(oldDir, final)
+		}
 		return "", err
 	}
 	return final, nil
