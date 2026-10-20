@@ -1,6 +1,6 @@
 # M3 Editor Management — Design
 
-Status: draft for review · Date: 2026-10-20 · Refs: gd#18, gd#43, gd#45 · Builds on: [ADRs](../../adr/README.md)
+Status: accepted · Date: 2026-10-20 · Refs: gd#18, gd#43, gd#45 · Builds on: [ADRs](../../adr/README.md)
 
 ## Goal
 
@@ -201,13 +201,7 @@ Asset patterns are tried in order; names containing `debugsymbols` or `dSYM` are
 
 ## GitHub
 
-Split epic gd#18 into issues in M3:
-
-1. Godot version in `package.godot`, `package.local.godot`, editor registry and resolution (#43)
-2. `gd editor install | uninstall | list | available`
-3. `gd editor link | unlink | default | use`
-4. `gd editor open` / `gd open`, `gd godot`, `--detach`
-5. `gd start [scene]`
-6. Export templates `install | list | uninstall` (#45)
-
-New issue without milestone: `gd templates link` for custom export templates.
+Epic gd#18 is split into issues in M3: #43 core (version, `package.local.godot`,
+registry, resolution), #57 install/uninstall/list/available, #58
+link/unlink/default/use, #59 open/godot/`--detach`, #60 start, #45 export
+templates. Later, without milestone: #61 `gd templates link`.
