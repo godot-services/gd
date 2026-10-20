@@ -210,3 +210,15 @@ func TestRemoveFolderWithDotsInName(t *testing.T) {
 		t.Fatal("not removed")
 	}
 }
+
+func TestExtractRejectsCommaInFolderName(t *testing.T) {
+	project := t.TempDir()
+	z := makeZip(t, map[string]string{"repo/addons/a,b/a.gd": "a"})
+
+	if _, err := Extract(z, project, nil); !errors.Is(err, ErrUnsafePath) {
+		t.Fatal(err)
+	}
+	if entries, _ := os.ReadDir(project); len(entries) != 0 {
+		t.Fatalf("project not empty: %v", entries)
+	}
+}

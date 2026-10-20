@@ -101,6 +101,11 @@ func Extract(zipPath, projectDir string, owned []string) ([]string, error) {
 			continue
 		}
 
+		// package-lock.godot stores paths comma-separated
+		if strings.Contains(parts[1], ",") {
+			return nil, fmt.Errorf("%w: comma in addon folder: %s", ErrUnsafePath, f.Name)
+		}
+
 		entries = append(entries, entry{f, name})
 		if top := path.Join(parts[0], parts[1]); !slices.Contains(tops, top) {
 			tops = append(tops, top)
