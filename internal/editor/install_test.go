@@ -204,3 +204,55 @@ func TestInstallHashMismatchLeavesNothing(t *testing.T) {
 		t.Errorf("left behind: %v", ents)
 	}
 }
+
+func caseInsensitive(t *testing.T) bool {
+	t.Helper()
+	d := t.TempDir()
+	os.WriteFile(filepath.Join(d, "a"), nil, 0o644)
+	_, err := os.Stat(filepath.Join(d, "A"))
+	return err == nil
+}
+
+func TestExtractEditorRejectsCaseFoldedSymlinkChain(t *testing.T) {
+	if !caseInsensitive(t) {
+		t.Skip("case-sensitive file system")
+	}
+	root := t.TempDir()
+	zp := filepath.Join(root, "e.zip")
+	os.WriteFile(zp, makeZip(t,
+		zent{"L", ".", os.ModeSymlink | 0o777},
+		zent{"l/M", ".", os.ModeSymlink | 0o777},
+		zent{"l/m/s", "../../X", os.ModeSymlink | 0o777},
+		zent{"l/m/S/evil", "x", 0o644},
+	), 0o644)
+	os.MkdirAll(filepath.Join(root, "a", "X"), 0o755)
+	target := filepath.Join(root, "a", "b", "out")
+	if err := ExtractEditor(zp, target); !errors.Is(err, install.ErrUnsafePath) {
+		t.Fatalf("err = %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "a", "X", "evil")); err == nil {
+		t.Fatal("evil written outside target")
+	}
+}
+
+func TestExtractEditorRejectsDotEntry(t *testing.T) {
+	for _, name := range []string{".", "./"} {
+		z, target := writeZip(t,
+			zent{name, ".", os.ModeSymlink | 0o777},
+			zent{"evil", "x", 0o644},
+		)
+		if err := ExtractEditor(z, target); !errors.Is(err, install.ErrUnsafePath) {
+			t.Errorf("%q: err = %v", name, err)
+		}
+	}
+}
+
+func TestInstallMakesBinaryExecutable(t *testing.T) {
+	asset := "Godot_v4.7.2-stable_linux.x86_64.zip"
+	c := server(t, asset, makeZip(t, zent{"Godot_v4.7.2-stable_linux.x86_64", "bin", 0o644}), "")
+	ed, err := Install(context.Background(), c, t.TempDir(), "4.7.2", false, "linux", "amd64")
+	if err != nil {
+		t.Fatal(err)
+	}
+	isExec(t, ed.Path)
+}

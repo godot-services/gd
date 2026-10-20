@@ -32,7 +32,7 @@ func ExtractEditor(zipPath, target string) error {
 	links := map[string]bool{}
 	for _, f := range zr.File {
 		name := path.Clean(strings.ReplaceAll(f.Name, "\\", "/"))
-		if path.IsAbs(name) || name == ".." || strings.HasPrefix(name, "../") {
+		if name == "." || path.IsAbs(name) || name == ".." || strings.HasPrefix(name, "../") {
 			return fmt.Errorf("%w in zip: %s", install.ErrUnsafePath, f.Name)
 		}
 		// an entry below an archived symlink could make later ".." steps leave target
@@ -64,31 +64,78 @@ func ExtractEditor(zipPath, target string) error {
 		links[name] = true
 	}
 
+	if err := os.MkdirAll(target, 0o755); err != nil {
+		return err
+	}
+	real, err := filepath.EvalSymlinks(target)
+	if err != nil {
+		return err
+	}
 	for _, f := range zr.File {
-		dst := filepath.Join(target, filepath.FromSlash(path.Clean(strings.ReplaceAll(f.Name, "\\", "/"))))
+		dst := filepath.Join(real, filepath.FromSlash(path.Clean(strings.ReplaceAll(f.Name, "\\", "/"))))
 		switch {
 		case f.Mode()&os.ModeSymlink != 0:
 			dest, _ := linkTarget(f)
-			if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+			parent, err := ensureDir(real, filepath.Dir(dst))
+			if err != nil {
 				return err
 			}
-			if err := os.Symlink(dest, dst); err != nil {
+			lt := filepath.Join(parent, filepath.FromSlash(dest))
+			if !within(real, lt) {
+				return fmt.Errorf("%w in zip: symlink %s escapes", install.ErrUnsafePath, f.Name)
+			}
+			if r, err := filepath.EvalSymlinks(lt); err == nil && !within(real, r) {
+				return fmt.Errorf("%w in zip: symlink %s escapes", install.ErrUnsafePath, f.Name)
+			}
+			if err := os.Symlink(dest, filepath.Join(parent, filepath.Base(dst))); err != nil {
 				return err
 			}
 		case f.FileInfo().IsDir():
-			if err := os.MkdirAll(dst, 0o755); err != nil {
+			if _, err := ensureDir(real, dst); err != nil {
 				return err
 			}
 		default:
-			if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+			parent, err := ensureDir(real, filepath.Dir(dst))
+			if err != nil {
 				return err
 			}
-			if err := writeEntry(f, dst); err != nil {
+			if err := writeEntry(f, filepath.Join(parent, filepath.Base(dst))); err != nil {
 				return err
 			}
 		}
 	}
 	return nil
+}
+
+func within(real, p string) bool {
+	return p == real || strings.HasPrefix(p, real+string(filepath.Separator))
+}
+
+// ensureDir creates dir and returns its resolved path, failing if any existing part resolves outside real.
+// The real-path check, not entry names, is what holds on case-insensitive file systems.
+func ensureDir(real, dir string) (string, error) {
+	for anc := dir; ; anc = filepath.Dir(anc) {
+		if r, err := filepath.EvalSymlinks(anc); err == nil {
+			if !within(real, r) {
+				return "", fmt.Errorf("%w: %s resolves outside the target", install.ErrUnsafePath, dir)
+			}
+			break
+		}
+		if anc == filepath.Dir(anc) {
+			return "", fmt.Errorf("%w: %s", install.ErrUnsafePath, dir)
+		}
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", err
+	}
+	r, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		return "", err
+	}
+	if !within(real, r) {
+		return "", fmt.Errorf("%w: %s resolves outside the target", install.ErrUnsafePath, dir)
+	}
+	return r, nil
 }
 
 func linkTarget(f *zip.File) (string, error) {
@@ -196,15 +243,20 @@ func Install(ctx context.Context, c godotbuilds.Client, dataDir, version string,
 	if err := ExtractEditor(zipPath, tree); err != nil {
 		return Editor{}, err
 	}
-	if _, _, err := FindExecutable(tree, goos); err != nil {
+	gui, console, err := FindExecutable(tree, goos)
+	if err != nil {
 		return Editor{}, err
+	}
+	if goos == "linux" || goos == "darwin" {
+		for _, p := range []string{gui, console} {
+			if err := os.Chmod(p, 0o755); err != nil {
+				return Editor{}, err
+			}
+		}
 	}
 	if err := os.Rename(tree, final); err != nil {
 		return Editor{}, err
 	}
-	gui, _, err := FindExecutable(final, goos)
-	if err != nil {
-		return Editor{}, err
-	}
-	return Editor{Name: name, Path: gui, Version: tag, Dotnet: dotnet, Build: "official", Source: "managed"}, nil
+	rel, _ := filepath.Rel(tree, gui)
+	return Editor{Name: name, Path: filepath.Join(final, rel), Version: tag, Dotnet: dotnet, Build: "official", Source: "managed"}, nil
 }
