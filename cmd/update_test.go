@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/godot-services/gd/internal/godot"
+	"github.com/godot-services/gd/internal/install"
 )
 
 func TestUpdateAll(t *testing.T) {
@@ -108,5 +109,29 @@ func TestUpdateReportsNewVersionStringWithSameURL(t *testing.T) {
 	out, err := runOut(t, lib, "update")
 	if err != nil || !strings.Contains(out, "updated dialogic_2 2.0 -> 2.1") {
 		t.Fatal(out, err)
+	}
+}
+
+func TestUpdateWithoutLockEntryShowsDash(t *testing.T) {
+	dir := newTestProject(t)
+	os.WriteFile(filepath.Join(dir, godot.PackageFileName), []byte("[assets]\ndialogic_2={ library=\"1234\" }\n"), 0o644)
+
+	out, err := runOut(t, newFakeLibrary(t), "update")
+	if err != nil || !strings.Contains(out, "updated dialogic_2 - -> 2.0") {
+		t.Fatal(out, err)
+	}
+}
+
+func TestUpdateAfterRenameHintsInstall(t *testing.T) {
+	dir := newTestProject(t)
+	lib := newFakeLibrary(t)
+	if err := run(t, lib, "add", "1234"); err != nil {
+		t.Fatal(err)
+	}
+	os.WriteFile(filepath.Join(dir, godot.PackageFileName), []byte("[assets]\ndlg={ library=\"1234\" }\n"), 0o644)
+
+	err := run(t, lib, "update")
+	if !errors.Is(err, install.ErrForeignPath) || !strings.Contains(err.Error(), "gd install") {
+		t.Fatal(err)
 	}
 }

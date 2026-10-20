@@ -198,3 +198,16 @@ func TestInstallNoDevSkipsDevAssets(t *testing.T) {
 		t.Fatalf("lock %+v, asset requests %d", lock, lib.assetHits)
 	}
 }
+
+func TestInstallNoDevSkipsDevAssetWithoutLockEntry(t *testing.T) {
+	dir := newTestProject(t)
+	lib := newFakeLibrary(t)
+	os.WriteFile(filepath.Join(dir, godot.PackageFileName), []byte("[dev_assets]\ntool={ library=\"1234\" }\n"), 0o644)
+
+	if err := run(t, lib, "install", "--no-dev"); err != nil {
+		t.Fatal(err)
+	}
+	if lib.assetHits != 0 || lib.zipHits != 0 || exists(filepath.Join(dir, "addons")) || exists(filepath.Join(dir, godot.LockFileName)) {
+		t.Fatalf("asset %d zip %d", lib.assetHits, lib.zipHits)
+	}
+}

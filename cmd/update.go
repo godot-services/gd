@@ -1,11 +1,13 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 	"slices"
 
 	"github.com/godot-services/gd/internal/godot"
+	"github.com/godot-services/gd/internal/install"
 	"github.com/spf13/cobra"
 )
 
@@ -36,13 +38,20 @@ func newUpdateCmd(opts *options) *cobra.Command {
 				old := lock[name]
 				// keep only the owned paths: forces a fresh resolve and allows replacing the old folders
 				updated, err := installAndLock(cmd.Context(), lib, dir, lock, name, assets[name], &godot.LockEntry{Paths: old.Paths})
+				if errors.Is(err, install.ErrForeignPath) {
+					return fmt.Errorf("%w (if the asset was renamed in package.godot, run gd install first)", err)
+				}
 				if err != nil {
 					return err
 				}
 
 				// same rule as gd outdated (URL or version string), plus new bytes behind the same URL
-			if updated.URL != old.URL || updated.VersionString != old.VersionString || updated.SHA256 != old.SHA256 {
-					cmd.Printf("updated %s %s -> %s\n", name, old.VersionString, updated.VersionString)
+				if updated.URL != old.URL || updated.VersionString != old.VersionString || updated.SHA256 != old.SHA256 {
+					oldVersion := old.VersionString
+					if oldVersion == "" {
+						oldVersion = "-"
+					}
+					cmd.Printf("updated %s %s -> %s\n", name, oldVersion, updated.VersionString)
 				} else {
 					cmd.Printf("%s is up to date\n", name)
 				}

@@ -95,3 +95,16 @@ func TestOutdatedSourceChangedNeedsInstall(t *testing.T) {
 		t.Fatal(out, err, lib.assetHits)
 	}
 }
+
+func TestOutdatedMessageGrammar(t *testing.T) {
+	newTestProject(t)
+	lib := newFakeLibrary(t)
+	if err := run(t, lib, "add", "1234"); err != nil {
+		t.Fatal(err)
+	}
+	lib.version = "2.1"
+
+	if _, err := runOut(t, lib, "outdated"); err == nil || err.Error() != "1 asset is outdated" || !errors.Is(err, errOutdated) {
+		t.Fatal(err)
+	}
+}
