@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"os"
 
 	"github.com/godot-services/gd/internal/godotbuilds"
@@ -27,7 +28,7 @@ Assets are declared in package.godot and pinned in package-lock.godot.`,
 	rootCmd.PersistentFlags().MarkHidden("builds-url")
 	rootCmd.PersistentFlags().MarkHidden("builds-api-url")
 
-	rootCmd.AddCommand(newEditorCmd(opts), newAddCmd(opts), newInstallCmd(opts), newRemoveCmd(), newSearchCmd(opts), newOutdatedCmd(opts), newUpdateCmd(opts), newCacheCmd())
+	rootCmd.AddCommand(newEditorCmd(opts), newAddCmd(opts), newInstallCmd(opts), newRemoveCmd(), newSearchCmd(opts), newOutdatedCmd(opts), newUpdateCmd(opts), newCacheCmd(), newOpenCmd("open"), newGodotCmd())
 
 	return rootCmd
 }
@@ -35,6 +36,10 @@ Assets are declared in package.godot and pinned in package-lock.godot.`,
 // Execute runs the root command. This is called by main.main().
 func Execute() {
 	err := newRootCmd().Execute()
+	var ee exitError
+	if errors.As(err, &ee) {
+		os.Exit(ee.code)
+	}
 	if err != nil {
 		os.Exit(1)
 	}

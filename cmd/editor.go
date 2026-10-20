@@ -21,7 +21,7 @@ import (
 func newEditorCmd(opts *options) *cobra.Command {
 	c := &cobra.Command{Use: "editor", Short: "Manage Godot editors"}
 	c.AddCommand(newEditorInstallCmd(opts), newEditorUninstallCmd(), newEditorListCmd(), newEditorAvailableCmd(opts),
-		newEditorLinkCmd(), newEditorUnlinkCmd(), newEditorDefaultCmd(), newEditorUseCmd())
+		newEditorLinkCmd(), newEditorUnlinkCmd(), newEditorDefaultCmd(), newEditorUseCmd(), newOpenCmd("open"))
 	return c
 }
 
