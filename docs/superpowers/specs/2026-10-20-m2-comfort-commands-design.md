@@ -1,6 +1,6 @@
 # M2 Comfort Commands — Design
 
-Status: draft for review · Date: 2026-10-20 · Refs: gd#17 · Builds on: [MVP spec](2026-10-20-mvp-asset-install-design.md), [ADRs](../../adr/README.md)
+Status: accepted · Date: 2026-10-20 · Refs: gd#17 · Builds on: [MVP spec](2026-10-20-mvp-asset-install-design.md), [ADRs](../../adr/README.md)
 
 ## Goal
 
@@ -149,5 +149,5 @@ Tests:
 
 ## GitHub
 
-Split epic gd#17 into four issues in milestone M2 (search, install --no-dev,
-outdated, update), each referencing the epic. Close the epic when all are done.
+Split epic gd#17 into four issues in milestone M2: #35 search, #36 install --no-dev,
+#37 outdated, #38 update. Close the epic when all are done.
