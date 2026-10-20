@@ -27,7 +27,11 @@ func (o *options) builds() godotbuilds.Client {
 	if token == "" {
 		token = os.Getenv("GITHUB_TOKEN")
 	}
-	return godotbuilds.Client{BaseURL: o.buildsURL, APIURL: o.buildsAPIURL, Token: token, HTTP: &http.Client{Timeout: 10 * time.Minute}}
+	// no total timeout: export templates are >1 GB; dial (30s, default), TLS and header timeouts catch dead servers
+	tr := http.DefaultTransport.(*http.Transport).Clone()
+	tr.TLSHandshakeTimeout = 30 * time.Second
+	tr.ResponseHeaderTimeout = 60 * time.Second
+	return godotbuilds.Client{BaseURL: o.buildsURL, APIURL: o.buildsAPIURL, Token: token, HTTP: &http.Client{Transport: tr}}
 }
 
 func (o *options) library() source.Library {
