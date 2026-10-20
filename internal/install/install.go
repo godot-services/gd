@@ -21,7 +21,7 @@ import (
 const addonsDir = "addons"
 
 var (
-	ErrHashMismatch = errors.New("sha256 mismatch")
+	ErrHashMismatch = errors.New("checksum mismatch")
 	ErrNoAddons     = errors.New("asset contains no addons/ folder")
 	ErrUnsafePath   = errors.New("unsafe path")
 	ErrForeignPath  = errors.New("folder exists and is not managed by this asset")

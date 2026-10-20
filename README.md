@@ -44,7 +44,7 @@ and are SHA-512 verified.
 
 ```sh
 gd editor available [--pre]                               # versions you can install
-gd editor install [version] [--dotnet]                    # no version: the one from package.godot / project.godot
+gd editor install [version] [--dotnet]                    # no version: [editor] version from package.godot
 gd editor list
 gd editor link <alias> <path>                             # register an editor you installed yourself
 gd editor unlink <alias>

@@ -8,10 +8,13 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/godot-services/gd/internal/editor"
+	"github.com/godot-services/gd/internal/godot"
+	"github.com/godot-services/gd/internal/godotbuilds"
 	"github.com/godot-services/gd/internal/testutil/fakegodot"
 )
 
@@ -312,5 +315,125 @@ func TestEditorUseGitignoreHint(t *testing.T) {
 	os.WriteFile(gi, []byte(".godot/\n/package.local.godot\n"), 0o644)
 	if h := hint(); h != "" {
 		t.Errorf("hint with entry: %q", h)
+	}
+}
+
+// orphanDir creates editors/<name> without a registry entry, holding the fake godot
+// in this OS's layout when withExe is set.
+func orphanDir(t *testing.T, name string, withExe bool) string {
+	t.Helper()
+	dd, err := editor.DataDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := filepath.Join(dd, "editors", name)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if !withExe {
+		os.WriteFile(filepath.Join(dir, "junk"), nil, 0o644)
+		return dir
+	}
+	exe := map[string]string{"darwin": "Godot.app/Contents/MacOS/Godot", "windows": "Godot_v4.7.2-stable_win64.exe"}[runtime.GOOS]
+	if exe == "" {
+		exe = "Godot_v4.7.2-stable_linux.x86_64"
+	}
+	bin, err := os.ReadFile(os.Args[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := filepath.Join(dir, filepath.FromSlash(exe))
+	os.MkdirAll(filepath.Dir(p), 0o755)
+	if err := os.WriteFile(p, bin, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
+func TestEditorInstallRecoversOrphan(t *testing.T) {
+	newTestProject(t)
+	fakegodot.Setup(t, "4.7.2.stable.official.abc")
+	dir := orphanDir(t, "4.7.2", true)
+	hits := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { hits++; http.NotFound(w, r) }))
+	defer srv.Close()
+	out, err := runEditor(t, srv.URL, "editor", "install", "4.7.2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, _ := loadReg(t)
+	e := r.Editors["4.7.2"]
+	if e.Source != "managed" || e.Version != "4.7.2-stable" || !strings.HasPrefix(e.Path, dir) || r.Default != "4.7.2" || hits != 0 {
+		t.Errorf("entry = %+v default %q hits %d", e, r.Default, hits)
+	}
+	if !strings.Contains(out, "re-registered 4.7.2") {
+		t.Errorf("out = %q", out)
+	}
+}
+
+func TestEditorInstallReplacesBrokenOrphan(t *testing.T) {
+	newTestProject(t)
+	dir := orphanDir(t, "4.7.2", false)
+	out, err := runEditor(t, newFakeBuilds(t), "editor", "install", "4.7.2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, _ := loadReg(t)
+	if e := r.Editors["4.7.2"]; !exists(e.Path) || exists(filepath.Join(dir, "junk")) || !strings.Contains(out, "installed 4.7.2 (4.7.2-stable)") {
+		t.Errorf("entry = %+v out %q", e, out)
+	}
+}
+
+func TestEditorInstallStableSuffixSameName(t *testing.T) {
+	newTestProject(t)
+	b := newFakeBuilds(t)
+	if _, err := runEditor(t, b, "editor", "install", "4.7.2-stable"); err != nil {
+		t.Fatal(err)
+	}
+	out, err := runEditor(t, b, "editor", "install", "4.7.2")
+	r, _ := loadReg(t)
+	if err != nil || !strings.Contains(out, "already installed") || len(r.Editors) != 1 || r.Editors["4.7.2"].Name != "4.7.2" {
+		t.Errorf("out %q err %v registry %+v", out, err, r.Editors)
+	}
+}
+
+func TestInstallUnknownVersionHint(t *testing.T) {
+	newTestProject(t)
+	srv := httptest.NewServer(http.NotFoundHandler())
+	defer srv.Close()
+	for _, c := range []string{"editor", "templates"} {
+		_, err := runEditor(t, srv.URL, c, "install", "4.99")
+		if !errors.Is(err, godotbuilds.ErrUnknownVersion) || !strings.Contains(err.Error(), "run gd editor available --pre to list versions") {
+			t.Errorf("%s: err = %v", c, err)
+		}
+	}
+}
+
+func TestInstallReportsInvalidPackage(t *testing.T) {
+	dir := newTestProject(t)
+	os.WriteFile(filepath.Join(dir, "package.godot"), []byte("[editor]\nversion=3.x\n"), 0o644)
+	for _, c := range []string{"editor", "templates"} {
+		_, err := runEditor(t, newFakeBuilds(t), c, "install")
+		if !errors.Is(err, godot.ErrInvalidGodotVersion) || strings.Contains(err.Error(), "no [editor] version") {
+			t.Errorf("%s: err = %v", c, err)
+		}
+	}
+}
+
+func TestEditorUninstallRejectsBadName(t *testing.T) {
+	newTestProject(t)
+	dd, err := editor.DataDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.MkdirAll(dd, 0o755)
+	keep := filepath.Join(dd, "keep")
+	os.WriteFile(keep, nil, 0o644)
+	os.WriteFile(filepath.Join(dd, editor.RegistryFileName), []byte("[..]\npath=/x\nversion=4.7.2-stable\nbuild=official\nsource=managed\n"), 0o644)
+	if r, _ := loadReg(t); r.Editors[".."].Source != "managed" {
+		t.Fatalf("registry = %+v", r.Editors)
+	}
+	if _, err := runEditor(t, "", "editor", "uninstall", ".."); err == nil || !exists(keep) {
+		t.Errorf("err %v, data dir kept %v", err, exists(keep))
 	}
 }

@@ -15,6 +15,7 @@ import (
 
 	"github.com/godot-services/gd/internal/editor"
 	"github.com/godot-services/gd/internal/godot"
+	"github.com/godot-services/gd/internal/godotbuilds"
 	"github.com/spf13/cobra"
 )
 
@@ -40,6 +41,9 @@ func newEditorInstallCmd(opts *options) *cobra.Command {
 				version = args[0]
 			} else {
 				_, pkg, _, err := loadProject()
+				if err != nil && !errors.Is(err, godot.ErrNoGodotProject) {
+					return fmt.Errorf("load project: %w", err)
+				}
 				if err != nil || pkg.Editor.Version == "" {
 					return errors.New("no [editor] version in package.godot, pass a version: gd editor install <version>")
 				}
@@ -52,17 +56,32 @@ func newEditorInstallCmd(opts *options) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			e, err := editor.Install(cmd.Context(), opts.builds(), dataDir, version, dotnet, runtime.GOOS, runtime.GOARCH)
-			if errors.Is(err, editor.ErrAlreadyInstalled) {
-				cmd.Println(err)
-				return nil
-			}
-			if err != nil {
-				return err
-			}
 			reg, err := editor.LoadRegistry(dataDir)
 			if err != nil {
 				return err
+			}
+			verb := "installed"
+			e, err := editor.Install(cmd.Context(), opts.builds(), dataDir, version, dotnet, runtime.GOOS, runtime.GOARCH)
+			if errors.Is(err, editor.ErrAlreadyInstalled) {
+				name := editor.ManagedName(version, dotnet)
+				if _, ok := reg.Editors[name]; ok {
+					cmd.Println(err)
+					return nil
+				}
+				// editors/<name> without a registry entry (lost or unsaved editors.godot)
+				dir := filepath.Join(dataDir, "editors", name)
+				if e, err = probeOrphan(cmd, dir, name, version, dotnet); err == nil {
+					verb = "re-registered"
+				} else {
+					cmd.PrintErrf("editors/%s is not a working %s editor (%v), reinstalling\n", name, version, err)
+					if err := os.RemoveAll(dir); err != nil {
+						return err
+					}
+					e, err = editor.Install(cmd.Context(), opts.builds(), dataDir, version, dotnet, runtime.GOOS, runtime.GOARCH)
+				}
+			}
+			if err != nil {
+				return versionHint(err)
 			}
 			reg.Editors[e.Name] = e
 			if reg.Default == "" {
@@ -71,12 +90,36 @@ func newEditorInstallCmd(opts *options) *cobra.Command {
 			if err := reg.Save(dataDir); err != nil {
 				return err
 			}
-			cmd.Printf("installed %s (%s) -> %s\n", e.Name, e.Version, e.Path)
+			cmd.Printf("%s %s (%s) -> %s\n", verb, e.Name, e.Version, e.Path)
 			return nil
 		},
 	}
 	c.Flags().BoolVar(&dotnet, "dotnet", false, "install the .NET (mono) flavour")
 	return c
+}
+
+// probeOrphan registers an unregistered managed dir if it holds the requested official editor.
+func probeOrphan(cmd *cobra.Command, dir, name, version string, dotnet bool) (editor.Editor, error) {
+	gui, _, err := editor.FindExecutable(dir, runtime.GOOS)
+	if err != nil {
+		return editor.Editor{}, err
+	}
+	v, d, b, err := editor.ProbeVersion(cmd.Context(), gui)
+	if err != nil {
+		return editor.Editor{}, err
+	}
+	if v != godot.ReleaseTag(version) || d != dotnet || b != "official" {
+		return editor.Editor{}, fmt.Errorf("found %s (dotnet %t, %s)", v, d, b)
+	}
+	return editor.Editor{Name: name, Path: gui, Version: v, Dotnet: d, Build: b, Source: "managed"}, nil
+}
+
+// versionHint points at the version list when godot-builds has no such release.
+func versionHint(err error) error {
+	if errors.Is(err, godotbuilds.ErrUnknownVersion) {
+		return fmt.Errorf("%w, run gd editor available --pre to list versions", err)
+	}
+	return err
 }
 
 func newEditorUninstallCmd() *cobra.Command {
@@ -101,7 +144,10 @@ func newEditorUninstallCmd() *cobra.Command {
 			if e.Source != "managed" {
 				return fmt.Errorf("editor %q is linked, use gd editor unlink %s", name, name)
 			}
-			// the entry's Path is never trusted for deletion, only the managed dir
+			// the entry's Path is never trusted for deletion, only the managed dir, and a hand-edited key must not escape it
+			if godot.ValidateVersion(strings.TrimSuffix(name, "-dotnet")) != nil {
+				return fmt.Errorf("invalid managed editor name %q in %s", name, editor.RegistryFileName)
+			}
 			if err := os.RemoveAll(filepath.Join(dataDir, "editors", name)); err != nil {
 				return err
 			}

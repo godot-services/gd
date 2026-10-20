@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -54,6 +55,9 @@ func newTemplatesInstallCmd(opts *options) *cobra.Command {
 			if len(args) == 1 {
 				version = args[0]
 			} else {
+				if perr != nil && !errors.Is(perr, godot.ErrNoGodotProject) {
+					return fmt.Errorf("load project: %w", perr)
+				}
 				if perr != nil || pkg.Editor.Version == "" {
 					return errors.New("no [editor] version in package.godot, pass a version: gd templates install <version>")
 				}
@@ -73,7 +77,7 @@ func newTemplatesInstallCmd(opts *options) *cobra.Command {
 				return nil
 			}
 			if err != nil {
-				return err
+				return versionHint(err)
 			}
 			cmd.Printf("installed templates %s -> %s\n", filepath.Base(path), path)
 			return nil
