@@ -51,6 +51,9 @@ func newAddCmd(opts *options) *cobra.Command {
 			if _, ok := pkg.AllAssets()[name]; ok {
 				return fmt.Errorf("%w: %s", godot.ErrAssetExists, name)
 			}
+			if _, ok := lock[name]; ok {
+				return fmt.Errorf("%w: %s", errNameInLock, name)
+			}
 
 			entry, err := installAsset(cmd.Context(), lib, dir, a, &godot.LockEntry{Source: r.Source, URL: r.URL, VersionString: r.VersionString})
 			if err != nil {
@@ -80,6 +83,9 @@ func newAddCmd(opts *options) *cobra.Command {
 
 	return cmd
 }
+
+// errNameInLock: overwriting a lock-only entry would orphan its installed folders.
+var errNameInLock = errors.New("name is still in package-lock.godot, run gd install first")
 
 // errVersionForLibrary: the asset library only serves the latest version, so --version cannot pin it.
 var errVersionForLibrary = errors.New("--version only applies to git URLs; the asset library always serves the latest version")
