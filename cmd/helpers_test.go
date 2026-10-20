@@ -3,10 +3,12 @@ package cmd
 import (
 	"archive/zip"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
@@ -69,16 +71,30 @@ type fakeLibrary struct {
 	zip       []byte
 	zipStatus int
 	zipHits   int
+
+	// asset 1234
+	version     string
+	assetStatus int
+	assetHits   int
+
+	// GET /asset search
+	results   []map[string]string
+	lastQuery url.Values
 }
 
-// newFakeLibrary serves asset 1234 ("Dialogic 2") whose download is /zip.
+// newFakeLibrary serves asset 1234 ("Dialogic 2") whose download is /zip?v=<version>.
 func newFakeLibrary(t *testing.T) *fakeLibrary {
 	t.Helper()
-	lib := &fakeLibrary{zip: zipBytes(t, testZip), zipStatus: http.StatusOK}
+	lib := &fakeLibrary{zip: zipBytes(t, testZip), zipStatus: http.StatusOK, version: "2.0", assetStatus: http.StatusOK}
 	lib.Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/asset/1234":
-			fmt.Fprintf(w, `{"title":"Dialogic 2","version_string":"2.0","download_url":"%s/zip"}`, lib.URL)
+			lib.assetHits++
+			w.WriteHeader(lib.assetStatus)
+			fmt.Fprintf(w, `{"title":"Dialogic 2","version_string":"%s","download_url":"%s/zip?v=%s"}`, lib.version, lib.URL, lib.version)
+		case "/asset":
+			lib.lastQuery = r.URL.Query()
+			json.NewEncoder(w).Encode(map[string]any{"result": lib.results, "total_items": len(lib.results)})
 		case "/zip":
 			lib.zipHits++
 			w.WriteHeader(lib.zipStatus)
@@ -98,6 +114,18 @@ func run(t *testing.T, lib *fakeLibrary, args ...string) error {
 	root.SetOut(io.Discard)
 	root.SetErr(io.Discard)
 	return root.Execute()
+}
+
+// runOut is run with the command output captured.
+func runOut(t *testing.T, lib *fakeLibrary, args ...string) (string, error) {
+	t.Helper()
+	var out bytes.Buffer
+	root := newRootCmd()
+	root.SetArgs(append([]string{"--library-url", lib.URL}, args...))
+	root.SetOut(&out)
+	root.SetErr(io.Discard)
+	err := root.Execute()
+	return out.String(), err
 }
 
 func exists(path string) bool {
