@@ -1,42 +1,55 @@
 # Configuration Files
 
-`gd` currently aims to support one configuration file: `package.godot`
+`gd` uses two files in the root of a Godot project (next to `project.godot`):
 
-The configuration file should support differnt types of projects:
+- `package.godot`: the assets of the project, edited by you (or `gd add`/`gd remove`)
+- `package.lock`: the resolved download and its SHA-256 per asset, written by `gd` only
 
-- `games`
-- `assets`
-- `dev_assets`
+Both files use the INI format Godot uses for `project.godot`.
 
-Other types will maybe be checked later...maybe
-
-# Example configuration
-
-> [!NOTE]
-> This example was linted with https://tools.rlugt.com/inivalidator/
+# `package.godot`
 
 ```ini
 [package]
-name="My awesome package"
+name="My game"
 version="1.0.0"
 
-[editor]
-version=4.2.1
-
 [assets]
-custom_asset={ version="3.4.2", registry="my-custom-asset-registry" }
-other_asset={ version="optional-git-ref", git="https://github.com/other/asset.git" }
+dialogic={ library="1234" }
+my_tool={ git="https://github.com/foo/tool", version="v1.2.0" }
 
 [dev_assets]
-custom_dev_asset={ version="3.4.2", registry="my-custom-asset-registry" }
-other_dev_asset={ version="optional-git-ref", git="https://github.com/other/dev_asset.git" }
+gut={ library="1709" }
 
 ; alternative asset definition
-[dev_assets.custom_other_dev_asset]
-version="3.4.2"
-registry="my-custom-asset-registry"
-
-[assets.custom_other_asset]
-version="optional-git-ref"
-git="https://github.com/other/custom_other_asset.git"
+[assets.other_tool]
+git="https://gitlab.com/foo/other_tool"
+version="main"
 ```
+
+Every asset has exactly one source key:
+
+| key        | meaning                                   | `version`                          |
+| ---------- | ----------------------------------------- | ---------------------------------- |
+| `library`  | asset ID in the official asset library    | informational, not used to resolve |
+| `git`      | repository URL (GitHub, GitLab, Codeberg) | ref (tag, branch, commit); required |
+| `registry` | custom registry                           | planned, not supported yet         |
+
+`dev_assets` are installed like `assets` for now.
+
+# `package.lock`
+
+```ini
+[dialogic]
+source="library:1234"
+url="https://github.com/coppolaemilio/dialogic/archive/master.zip"
+sha256="9f86d0…"
+version_string="2.0"
+paths="addons/dialogic"
+```
+
+`gd install` downloads `url` and aborts if the SHA-256 differs, so every machine
+gets the same files. `paths` lists the folders `gd` installed under `addons/`;
+`gd remove` only ever deletes these.
+
+Commit both files.
