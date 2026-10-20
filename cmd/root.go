@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
+	"io"
 	"os"
 
 	"github.com/godot-services/gd/internal/godotbuilds"
@@ -17,7 +19,8 @@ func newRootCmd() *cobra.Command {
 		Short: "Package manager for Godot projects",
 		Long: `gd manages the addons of a Godot project.
 Assets are declared in package.godot and pinned in package-lock.godot.`,
-		SilenceUsage: true,
+		SilenceUsage:  true,
+		SilenceErrors: true,
 	}
 
 	rootCmd.PersistentFlags().StringVar(&opts.libraryURL, "library-url", source.DefaultLibraryURL, "asset library API base URL")
@@ -33,14 +36,23 @@ Assets are declared in package.godot and pinned in package-lock.godot.`,
 	return rootCmd
 }
 
+// exitCode reports err on stderr (exitError stays silent: Godot already spoke) and returns the process exit code.
+func exitCode(err error, stderr io.Writer) int {
+	var ee exitError
+	switch {
+	case err == nil:
+		return 0
+	case errors.As(err, &ee):
+		return ee.code
+	}
+	fmt.Fprintln(stderr, "Error:", err)
+	return 1
+}
+
 // Execute runs the root command. This is called by main.main().
 func Execute() {
-	err := newRootCmd().Execute()
-	var ee exitError
-	if errors.As(err, &ee) {
-		os.Exit(ee.code)
-	}
-	if err != nil {
-		os.Exit(1)
+	rootCmd := newRootCmd()
+	if code := exitCode(rootCmd.Execute(), rootCmd.ErrOrStderr()); code != 0 {
+		os.Exit(code)
 	}
 }

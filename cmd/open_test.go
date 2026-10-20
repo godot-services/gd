@@ -113,3 +113,16 @@ func TestOpenWarnsOnLocalMismatch(t *testing.T) {
 		t.Errorf("e=%v err=%v stderr=%q", e, err, errOut.String())
 	}
 }
+
+func TestExitCode(t *testing.T) {
+	var buf bytes.Buffer
+	if c := exitCode(exitError{3}, &buf); c != 3 || buf.Len() != 0 {
+		t.Errorf("exitError: code %d out %q", c, buf.String())
+	}
+	if c := exitCode(errors.New("boom"), &buf); c != 1 || buf.String() != "Error: boom\n" {
+		t.Errorf("other: code %d out %q", c, buf.String())
+	}
+	if c := exitCode(nil, &buf); c != 0 {
+		t.Errorf("nil: code %d", c)
+	}
+}
