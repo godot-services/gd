@@ -1,6 +1,6 @@
 # MVP v0.1.0: Asset Installation — Design
 
-Status: draft for review · Date: 2026-10-20
+Status: accepted · Date: 2026-10-20 · Decisions: [docs/adr](../../adr/README.md)
 
 ## Goal
 
@@ -10,7 +10,7 @@ Status: draft for review · Date: 2026-10-20
 - a Git repository on GitHub, GitLab or Codeberg (by URL + ref)
 
 Success: in a Godot project, `gd add <id>` installs an addon into `addons/`,
-records it in `package.godot` and `package.lock`; on another machine
+records it in `package.godot` and `package-lock.godot`; on another machine
 `gd install` reproduces exactly the same files or fails loudly; `gd remove`
 undoes it.
 
@@ -68,7 +68,7 @@ The nested section form (`[assets.my_tool]`) stays supported for reading.
 Validation errors (unknown source, zero or several source keys, non-numeric
 library ID) are returned as errors naming the asset.
 
-### `package.lock` (written by `gd` only, INI)
+### `package-lock.godot` (written by `gd` only, INI)
 
 ```ini
 [dialogic]
@@ -91,7 +91,7 @@ paths="addons/dialogic"
    A missing `package.godot` is created.
 2. Resolve the source to a zip URL (see Sources).
 3. Download, compute SHA-256, install (see Installation).
-4. Write the asset to `package.godot` and the lock entry to `package.lock`.
+4. Write the asset to `package.godot` and the lock entry to `package-lock.godot`.
 
 Default name: library asset title slug (lowercase, `[a-z0-9_]`), or the
 repository name for Git. Adding an existing name is an error.
@@ -108,7 +108,7 @@ Lock entries without a matching asset are removed together with their `paths`.
 ### `gd remove <name>`
 
 Delete the `paths` from the lock entry, then remove the asset from
-`package.godot` and `package.lock`.
+`package.godot` and `package-lock.godot`.
 
 ## Sources (`internal/source`)
 
@@ -136,7 +136,7 @@ A trailing `.git` and trailing `/` are stripped from the repository URL.
 6. For each top-level folder `addons/<x>`: if it already exists in the project
    and is not in this asset's lock `paths` → error (never overwrite foreign
    files). Otherwise replace it with the staged folder.
-7. Only after success the caller writes `package.godot` / `package.lock`.
+7. Only after success the caller writes `package.godot` / `package-lock.godot`.
 
 ## Code structure
 
