@@ -10,6 +10,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// errInvalidName keeps names valid as INI keys and sections (e.g. DEFAULT is the INI default section).
+var errInvalidName = errors.New("asset name may only contain a-z, 0-9 and _")
+
 func newAddCmd(opts *options) *cobra.Command {
 	var name, version string
 	var dev bool
@@ -19,6 +22,10 @@ func newAddCmd(opts *options) *cobra.Command {
 		Short: "Add an asset from the asset library or a git repository",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if name != "" && source.Slug(name) != name {
+				return fmt.Errorf("%w: %q", errInvalidName, name)
+			}
+
 			a, err := assetFromRef(args[0], version)
 			if err != nil {
 				return err
@@ -53,11 +60,12 @@ func newAddCmd(opts *options) *cobra.Command {
 			if err := pkg.AddAsset(name, a, dev); err != nil {
 				return err
 			}
-			if err := pkg.Save(dir); err != nil {
-				return err
-			}
+			// lock first: if saving package.godot fails, gd install removes the entry as stale
 			lock[name] = entry
 			if err := lock.Save(dir); err != nil {
+				return err
+			}
+			if err := pkg.Save(dir); err != nil {
 				return err
 			}
 

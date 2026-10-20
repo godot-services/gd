@@ -37,6 +37,8 @@ Every asset has exactly one source key:
 
 `dev_assets` are installed like `assets` for now.
 
+Asset names may only contain `a-z`, `0-9` and `_`.
+
 # `package-lock.godot`
 
 ```ini

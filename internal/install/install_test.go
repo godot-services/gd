@@ -196,3 +196,29 @@ func TestRemoveDeletesPaths(t *testing.T) {
 		t.Fatal("removed too much")
 	}
 }
+
+func TestRemoveFolderWithDotsInName(t *testing.T) {
+	project := t.TempDir()
+	paths, err := Extract(makeZip(t, map[string]string{"repo/addons/my..tool/a.gd": "a"}), project, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := Remove(project, paths); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(project, "addons", "my..tool")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("not removed")
+	}
+}
+
+func TestExtractRejectsCommaInFolderName(t *testing.T) {
+	project := t.TempDir()
+	z := makeZip(t, map[string]string{"repo/addons/a,b/a.gd": "a"})
+
+	if _, err := Extract(z, project, nil); !errors.Is(err, ErrUnsafePath) {
+		t.Fatal(err)
+	}
+	if entries, _ := os.ReadDir(project); len(entries) != 0 {
+		t.Fatalf("project not empty: %v", entries)
+	}
+}

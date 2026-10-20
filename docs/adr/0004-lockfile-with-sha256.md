@@ -1,6 +1,6 @@
 # 0004. Lockfile with SHA-256 per asset
 
-- Status: accepted
+- Status: accepted, amended by [0013](0013-hardening-after-mvp-audit.md)
 - Date: 2026-10-20
 - Refs: gd#12
 

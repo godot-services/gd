@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"errors"
+	"fmt"
 	"slices"
 	"strings"
 
@@ -9,6 +11,8 @@ import (
 	"github.com/godot-services/gd/internal/source"
 	"github.com/spf13/cobra"
 )
+
+var errLockWithoutHash = errors.New("lock entry has no sha256, run gd remove and gd add again")
 
 func newInstallCmd(opts *options) *cobra.Command {
 	return &cobra.Command{
@@ -51,6 +55,8 @@ func newInstallCmd(opts *options) *cobra.Command {
 					if e.Source != source.ID(a) {
 						// source changed in package.godot: resolve again, keep ownership of installed paths
 						e = godot.LockEntry{Paths: e.Paths}
+					} else if e.URL != "" && e.SHA256 == "" {
+						return fmt.Errorf("%s: %w", name, errLockWithoutHash)
 					}
 					entry = &e
 				}

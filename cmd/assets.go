@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"slices"
+	"time"
 
 	"github.com/godot-services/gd/internal/godot"
 	"github.com/godot-services/gd/internal/install"
@@ -16,7 +17,8 @@ type options struct {
 }
 
 func (o *options) library() source.Library {
-	return source.Library{BaseURL: o.libraryURL, Client: http.DefaultClient}
+	// timeout covers the whole download; generous for large assets on slow links
+	return source.Library{BaseURL: o.libraryURL, Client: &http.Client{Timeout: 10 * time.Minute}}
 }
 
 // installAsset downloads and extracts one asset. Without a resolved lock entry
