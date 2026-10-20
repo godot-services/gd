@@ -69,7 +69,7 @@ func (l Library) Resolve(ctx context.Context, id string) (Resolved, error) {
 		return Resolved{}, fmt.Errorf("asset library: asset %s: %w", id, ErrNoDownloadURL)
 	}
 
-	return Resolved{URL: asset.DownloadURL, Title: asset.Title, VersionString: asset.VersionString, Source: "library:" + id}, nil
+	return Resolved{URL: asset.DownloadURL, Title: asset.Title, VersionString: asset.VersionString, Source: ID(godot.PackageAssetConfiguration{Library: id})}, nil
 }
 
 // GitArchiveURL builds the zip archive URL like the official asset library does.
@@ -101,7 +101,15 @@ func Resolve(ctx context.Context, lib Library, a godot.PackageAssetConfiguration
 		return Resolved{}, err
 	}
 
-	return Resolved{URL: archive, Title: RepoName(a.Git), VersionString: a.Version, Source: "git:" + trimRepo(a.Git) + "@" + a.Version}, nil
+	return Resolved{URL: archive, Title: RepoName(a.Git), VersionString: a.Version, Source: ID(a)}, nil
+}
+
+// ID returns the lock source identifier of an asset, e.g. library:1234 or git:<repo>@<ref>.
+func ID(a godot.PackageAssetConfiguration) string {
+	if a.Library != "" {
+		return "library:" + a.Library
+	}
+	return "git:" + trimRepo(a.Git) + "@" + a.Version
 }
 
 // Slug turns a title into an asset name: lowercase, [a-z0-9_] only.
