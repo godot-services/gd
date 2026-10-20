@@ -247,3 +247,28 @@ func TestExtractKeepsExecutableBit(t *testing.T) {
 		}
 	}
 }
+
+func TestFetchCachedUsesVerifiedCache(t *testing.T) {
+	hits := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits++
+		w.Write([]byte("zipdata"))
+	}))
+	t.Cleanup(srv.Close)
+	cache := t.TempDir()
+
+	path, sum, err := FetchCached(context.Background(), srv.Client(), srv.URL, "", cache)
+	if err != nil || path != filepath.Join(cache, sum+".zip") || readFile(t, path) != "zipdata" {
+		t.Fatal(path, sum, err)
+	}
+
+	if _, _, err := FetchCached(context.Background(), srv.Client(), srv.URL, sum, cache); err != nil || hits != 1 {
+		t.Fatalf("hits %d, %v", hits, err)
+	}
+
+	// a corrupted cache file is not trusted
+	os.WriteFile(path, []byte("corrupt"), 0o644)
+	if _, _, err := FetchCached(context.Background(), srv.Client(), srv.URL, sum, cache); err != nil || hits != 2 || readFile(t, path) != "zipdata" {
+		t.Fatalf("hits %d, %v", hits, err)
+	}
+}

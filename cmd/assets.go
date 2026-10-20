@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"os"
+	"path/filepath"
 	"slices"
 	"time"
 
@@ -37,16 +38,11 @@ func installAsset(ctx context.Context, lib source.Library, projectDir string, a 
 		e.Source, e.URL, e.VersionString = r.Source, r.URL, r.VersionString
 	}
 
-	tmp, err := os.MkdirTemp("", "gd-")
+	zipPath, sum, cleanup, err := fetch(ctx, lib, e)
 	if err != nil {
 		return godot.LockEntry{}, err
 	}
-	defer os.RemoveAll(tmp)
-
-	zipPath, sum, err := install.Fetch(ctx, lib.Client, e.URL, e.SHA256, tmp)
-	if err != nil {
-		return godot.LockEntry{}, err
-	}
+	defer cleanup()
 
 	paths, err := install.Extract(zipPath, projectDir, e.Paths)
 	if err != nil {
@@ -66,6 +62,29 @@ func installAsset(ctx context.Context, lib source.Library, projectDir string, a 
 
 	e.SHA256, e.Paths = sum, paths
 	return e, nil
+}
+
+// fetch uses the zip cache in <user cache dir>/gd; without a usable cache dir it
+// downloads into a temp dir. cleanup removes temp downloads, cached zips stay.
+func fetch(ctx context.Context, lib source.Library, e godot.LockEntry) (zipPath, sum string, cleanup func(), err error) {
+	if dir, err := os.UserCacheDir(); err == nil {
+		cache := filepath.Join(dir, "gd")
+		if err := os.MkdirAll(cache, 0o755); err == nil {
+			zipPath, sum, err := install.FetchCached(ctx, lib.Client, e.URL, e.SHA256, cache)
+			return zipPath, sum, func() {}, err
+		}
+	}
+
+	tmp, err := os.MkdirTemp("", "gd-")
+	if err != nil {
+		return "", "", nil, err
+	}
+	cleanup = func() { os.RemoveAll(tmp) }
+	zipPath, sum, err = install.Fetch(ctx, lib.Client, e.URL, e.SHA256, tmp)
+	if err != nil {
+		cleanup()
+	}
+	return zipPath, sum, cleanup, err
 }
 
 func loadProject() (dir string, pkg *godot.Package, lock godot.Lock, err error) {

@@ -54,6 +54,7 @@ func TestInstallHashMismatch(t *testing.T) {
 		t.Fatal(err)
 	}
 	lib.zip = zipBytes(t, map[string]string{"dialogic-main/addons/x/plugin.gd": "tampered"})
+	isolateCache(t) // empty cache, so the tampered zip is downloaded
 
 	if err := run(t, lib, "install"); !errors.Is(err, install.ErrHashMismatch) {
 		t.Fatal(err)
@@ -158,5 +159,21 @@ func TestInstallRefusesLockEntryWithoutHash(t *testing.T) {
 	}
 	if exists(filepath.Join(dir, "addons", "x")) {
 		t.Fatal("installed without verification")
+	}
+}
+
+func TestInstallUsesCache(t *testing.T) {
+	dir := newTestProject(t)
+	lib := newFakeLibrary(t)
+	if err := run(t, lib, "add", "1234"); err != nil {
+		t.Fatal(err)
+	}
+	os.RemoveAll(filepath.Join(dir, "addons"))
+
+	if err := run(t, lib, "install"); err != nil {
+		t.Fatal(err)
+	}
+	if lib.zipHits != 1 || !exists(filepath.Join(dir, "addons", "x", "plugin.gd")) {
+		t.Fatalf("zip downloaded %d times", lib.zipHits)
 	}
 }

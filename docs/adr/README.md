@@ -20,5 +20,6 @@ supersedes the old one.
 | [0011](0011-install-reconciliation.md)        | How `gd install` reconciles package and lock | accepted |
 | [0012](0012-single-install-path.md)           | One install path for add and install   | amended by 0013 |
 | [0013](0013-hardening-after-mvp-audit.md)     | Hardening after the MVP audit          | accepted |
+| [0014](0014-zip-cache.md)                     | Cache downloaded zips by SHA-256       | accepted |
 
 Template: copy [template.md](template.md).

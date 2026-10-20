@@ -20,7 +20,17 @@ func newTestProject(t *testing.T) string {
 		t.Fatal(err)
 	}
 	chdir(t, dir)
+	isolateCache(t)
 	return dir
+}
+
+// isolateCache points os.UserCacheDir at a temp dir (HOME on macOS, XDG_CACHE_HOME on Linux).
+func isolateCache(t *testing.T) string {
+	t.Helper()
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CACHE_HOME", filepath.Join(home, ".cache"))
+	return home
 }
 
 func chdir(t *testing.T, dir string) {
@@ -58,6 +68,7 @@ type fakeLibrary struct {
 	*httptest.Server
 	zip       []byte
 	zipStatus int
+	zipHits   int
 }
 
 // newFakeLibrary serves asset 1234 ("Dialogic 2") whose download is /zip.
@@ -69,6 +80,7 @@ func newFakeLibrary(t *testing.T) *fakeLibrary {
 		case "/asset/1234":
 			fmt.Fprintf(w, `{"title":"Dialogic 2","version_string":"2.0","download_url":"%s/zip"}`, lib.URL)
 		case "/zip":
+			lib.zipHits++
 			w.WriteHeader(lib.zipStatus)
 			w.Write(lib.zip)
 		default:
