@@ -21,7 +21,7 @@ Assets are declared in package.godot and pinned in package-lock.godot.`,
 	rootCmd.PersistentFlags().StringVar(&opts.libraryURL, "library-url", source.DefaultLibraryURL, "asset library API base URL")
 	rootCmd.PersistentFlags().MarkHidden("library-url")
 
-	rootCmd.AddCommand(newAddCmd(opts), newInstallCmd(opts), newRemoveCmd(), newSearchCmd(opts))
+	rootCmd.AddCommand(newAddCmd(opts), newInstallCmd(opts), newRemoveCmd(), newSearchCmd(opts), newOutdatedCmd(opts))
 
 	return rootCmd
 }
