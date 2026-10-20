@@ -266,3 +266,18 @@ func TestDownloadVerifiesSHA512(t *testing.T) {
 		t.Errorf("err = %v, want ErrHashMismatch", err)
 	}
 }
+
+func TestDownloadRequiresChecksum(t *testing.T) {
+	hits := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { hits++ }))
+	defer srv.Close()
+	c := Client{BaseURL: srv.URL, HTTP: srv.Client()}
+
+	_, err := c.Download(context.Background(), "4.7.2-stable", "a.zip", "", t.TempDir())
+	if !errors.Is(err, ErrNoChecksum) || !strings.Contains(err.Error(), "a.zip") {
+		t.Errorf("err = %v, want ErrNoChecksum naming the asset", err)
+	}
+	if hits != 0 {
+		t.Errorf("%d requests reached the server", hits)
+	}
+}

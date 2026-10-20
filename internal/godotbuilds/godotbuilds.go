@@ -22,6 +22,7 @@ const (
 var (
 	ErrUnknownVersion = errors.New("unknown Godot version")
 	ErrNoAsset        = errors.New("no editor asset for platform")
+	ErrNoChecksum     = errors.New("no checksum")
 )
 
 // Client talks to godot-builds. Token is only for the API (APIURL), not for downloads.
@@ -120,6 +121,9 @@ func TemplatesAsset(tag string, dotnet bool) string {
 
 // Download fetches asset of tag into dir and verifies it against wantSHA512.
 func (c Client) Download(ctx context.Context, tag, asset, wantSHA512, dir string) (string, error) {
+	if wantSHA512 == "" {
+		return "", fmt.Errorf("%w for %s", ErrNoChecksum, asset)
+	}
 	path, _, err := install.FetchHash(ctx, c.HTTP, c.BaseURL+"/"+tag+"/"+asset, wantSHA512, dir, sha512.New)
 	return path, err
 }
