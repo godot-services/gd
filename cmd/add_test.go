@@ -125,3 +125,17 @@ func TestAddFailingPackageSaveIsRecoverable(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestAddRejectsInvalidName(t *testing.T) {
+	dir := newTestProject(t)
+	lib := newFakeLibrary(t)
+
+	for _, name := range []string{"DEFAULT", "a b", "a.b"} {
+		if err := run(t, lib, "add", "1234", "--name", name); !errors.Is(err, errInvalidName) {
+			t.Errorf("%q: %v", name, err)
+		}
+	}
+	if exists(filepath.Join(dir, "addons")) {
+		t.Fatal("installed despite invalid name")
+	}
+}
