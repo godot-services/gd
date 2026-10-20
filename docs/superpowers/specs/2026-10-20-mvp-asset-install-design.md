@@ -101,6 +101,8 @@ repository name for Git. Adding an existing name is an error.
 For every asset in `package.godot`:
 
 - with lock entry: download `url`, compare SHA-256; mismatch → abort, no changes
+  to that asset (assets installed earlier in the same run stay updated, see
+  [ADR 0011](../../adr/0011-install-reconciliation.md))
 - without lock entry: resolve like `add`, then write the lock entry
 
 Lock entries without a matching asset are removed together with their `paths`.

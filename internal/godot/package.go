@@ -31,7 +31,7 @@ var (
 	ErrAssetExists         = errors.New("asset already exists")
 	ErrAssetNotFound       = errors.New("asset not found")
 
-	assetValueRe = regexp.MustCompile(`(\w+)="([^"]+)"`)
+	assetValueRe = regexp.MustCompile(`(\w+)="([^"]*)"`)
 )
 
 type Package struct {
@@ -164,7 +164,9 @@ func parseCustomINIValue(value string) (PackageAssetConfiguration, error) {
 	value = strings.TrimSuffix(value, "}")
 
 	matches := assetValueRe.FindAllStringSubmatch(value, -1)
-	if len(matches) == 0 {
+	// anything left besides key="value" pairs and separators (e.g. version=2) is invalid
+	rest := strings.Trim(assetValueRe.ReplaceAllString(value, ""), ", \t")
+	if len(matches) == 0 || rest != "" {
 		return asset, fmt.Errorf("%w: %s", ErrInvalidAssetValue, value)
 	}
 	for _, match := range matches {

@@ -89,3 +89,22 @@ func TestNewPackageValidatesAssets(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestNewPackageRejectsUnquotedInlineValue(t *testing.T) {
+	for _, src := range []string{
+		"[assets]\nfoo={ library=\"1\", version=2 }\n",
+		"[assets]\nfoo={ version=2, library=\"1\" }\n",
+	} {
+		_, err := NewPackage([]byte(src))
+		if !errors.Is(err, ErrInvalidAssetValue) || !strings.Contains(err.Error(), "foo") {
+			t.Errorf("%q: got %v", src, err)
+		}
+	}
+}
+
+func TestNewPackageAcceptsEmptyQuotedValue(t *testing.T) {
+	p, err := NewPackage([]byte("[assets]\nfoo={ library=\"1\", version=\"\" }\n"))
+	if err != nil || p.Assets["foo"].Library != "1" {
+		t.Fatal(p, err)
+	}
+}
