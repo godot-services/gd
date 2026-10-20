@@ -45,3 +45,29 @@ func TestNewProjectUnknownLocation(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestGodotVersion(t *testing.T) {
+	cases := []struct {
+		name, src, want string
+		err             error
+	}{
+		{"godot 4", "[application]\nconfig/name=\"G\"\nconfig/features=PackedStringArray(\"4.3\", \"Forward Plus\")\n", "4.3", nil},
+		{"patch", "[application]\nconfig/features=PackedStringArray(\"4.2.1\")\n", "4.2.1", nil},
+		{"version not first", "[application]\nconfig/features=PackedStringArray(\"Forward Plus\", \"4.3\")\n", "4.3", nil},
+		{"godot 3", "[application]\nconfig/name=\"G\"\n", "", ErrNoGodotVersion},
+		{"no version entry", "[application]\nconfig/features=PackedStringArray(\"Mobile\")\n", "", ErrNoGodotVersion},
+		{"multi-line values around", "[input]\nui_x={\n\"deadzone\": 0.5,\n\"events\": []\n}\n[application]\nconfig/features=PackedStringArray(\"4.4\")\n", "4.4", nil},
+	}
+	for _, c := range cases {
+		dir := t.TempDir()
+		os.WriteFile(filepath.Join(dir, ProjectFileName), []byte(c.src), 0o644)
+		p, err := NewProject(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, err := p.GodotVersion()
+		if got != c.want || !errors.Is(err, c.err) {
+			t.Errorf("%s: got %q, %v; want %q, %v", c.name, got, err, c.want, c.err)
+		}
+	}
+}
