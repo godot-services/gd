@@ -13,7 +13,7 @@ import (
 func newInstallCmd(opts *options) *cobra.Command {
 	return &cobra.Command{
 		Use:   "install",
-		Short: "Install all assets of package.godot as pinned in package.lock",
+		Short: "Install all assets of package.godot as pinned in package-lock.godot",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			dir, pkg, lock, err := loadProject()

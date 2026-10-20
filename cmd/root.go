@@ -14,7 +14,7 @@ func newRootCmd() *cobra.Command {
 		Use:   "gd",
 		Short: "Package manager for Godot projects",
 		Long: `gd manages the addons of a Godot project.
-Assets are declared in package.godot and pinned in package.lock.`,
+Assets are declared in package.godot and pinned in package-lock.godot.`,
 		SilenceUsage: true,
 	}
 

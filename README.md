@@ -4,7 +4,7 @@
 
 Package manager for Godot projects: installs addons from the official
 [Godot Asset Library](https://godotengine.org/asset-library/) or a Git repository
-into `addons/`, pinned and verified via `package.lock`.
+into `addons/`, pinned and verified via `package-lock.godot`.
 
 # Installation
 
@@ -19,14 +19,15 @@ Run `gd` in the folder that contains `project.godot`.
 ```sh
 gd add 1709 --dev                                         # asset library ID
 gd add https://github.com/foo/tool --version v1.2.0       # git (GitHub, GitLab, Codeberg)
-gd install                                                # install everything from package.lock
+gd install                                                # install everything from package-lock.godot
 gd remove tool
 ```
 
-`gd add` writes `package.godot` and `package.lock`; commit both. `gd install`
-aborts when a download does not match the SHA-256 in `package.lock`. Only
+`gd add` writes `package.godot` and `package-lock.godot`; commit both. `gd install`
+aborts when a download does not match the SHA-256 in `package-lock.godot`. Only
 `addons/<name>/` folders of an asset are installed, and `gd` never overwrites
-folders it did not install. See [configuration files](/docs/configuration-files.md).
+folders it did not install. See [configuration files](/docs/configuration-files.md)
+and the [decision records](/docs/adr/README.md) for why it works this way.
 
 > [!NOTE]
 > Following roadmaps are currently `wip`
@@ -36,7 +37,7 @@ folders it did not install. See [configuration files](/docs/configuration-files.
 | config file     | description                            | state                                    |
 | --------------- | -------------------------------------- | ---------------------------------------- |
 | `package.godot` | `gd` configuration for current project | [done](/docs/configuration-files.md) |
-| `package.lock`  | resolved downloads and SHA-256 hashes  | [done](/docs/configuration-files.md) |
+| `package-lock.godot` | resolved downloads and SHA-256 hashes | [done](/docs/configuration-files.md) |
 
 # command roadmap
 

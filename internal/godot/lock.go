@@ -10,7 +10,7 @@ import (
 	"gopkg.in/ini.v1"
 )
 
-const LockFileName = "package.lock"
+const LockFileName = "package-lock.godot"
 
 type LockEntry struct {
 	Source        string
@@ -23,7 +23,7 @@ type LockEntry struct {
 // Lock maps asset names to their resolved download.
 type Lock map[string]LockEntry
 
-// LoadLock reads package.lock from dir; a missing file yields an empty lock.
+// LoadLock reads package-lock.godot from dir; a missing file yields an empty lock.
 func LoadLock(dir string) (Lock, error) {
 	lock := Lock{}
 
@@ -55,7 +55,7 @@ func LoadLock(dir string) (Lock, error) {
 	return lock, nil
 }
 
-// Save writes package.lock to dir, sections sorted by name; an empty lock removes the file.
+// Save writes package-lock.godot to dir, sections sorted by name; an empty lock removes the file.
 func (l Lock) Save(dir string) error {
 	path := filepath.Join(dir, LockFileName)
 

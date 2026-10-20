@@ -3,7 +3,7 @@
 `gd` uses two files in the root of a Godot project (next to `project.godot`):
 
 - `package.godot`: the assets of the project, edited by you (or `gd add`/`gd remove`)
-- `package.lock`: the resolved download and its SHA-256 per asset, written by `gd` only
+- `package-lock.godot`: the resolved download and its SHA-256 per asset, written by `gd` only
 
 Both files use the INI format Godot uses for `project.godot`.
 
@@ -37,7 +37,7 @@ Every asset has exactly one source key:
 
 `dev_assets` are installed like `assets` for now.
 
-# `package.lock`
+# `package-lock.godot`
 
 ```ini
 [dialogic]
