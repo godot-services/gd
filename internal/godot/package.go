@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -11,6 +13,8 @@ import (
 )
 
 const (
+	PackageFileName = "package.godot"
+
 	packageAssetSectionName    = "assets"
 	packageDevAssetSectionName = "dev_assets"
 	nestedAssetsPrefix         = "assets."
@@ -24,6 +28,8 @@ var (
 	ErrRegistryUnsupported = errors.New("registry sources are not supported yet")
 	ErrInvalidLibraryID    = errors.New("library must be a numeric asset ID")
 	ErrGitVersionRequired  = errors.New("git sources require a version")
+	ErrAssetExists         = errors.New("asset already exists")
+	ErrAssetNotFound       = errors.New("asset not found")
 
 	assetValueRe         = regexp.MustCompile(`(\w+)="([^"]+)"`)
 )
@@ -33,6 +39,8 @@ type Package struct {
 	Editor    PackageEditorConfiguration           `ini:"editor"`
 	Assets    map[string]PackageAssetConfiguration `ini:"assets"`
 	DevAssets map[string]PackageAssetConfiguration `ini:"dev_assets"`
+
+	file *ini.File
 }
 
 type PackageConfiguration struct {
@@ -76,16 +84,31 @@ func (a PackageAssetConfiguration) Validate() error {
 	return nil
 }
 
-func NewPackage(source []byte) (*Package, error) {
-	cfg, err := ini.LoadSources(ini.LoadOptions{
-		AllowNestedValues:      true,
-		AllowNonUniqueSections: true,
-	}, source)
+var packageLoadOptions = ini.LoadOptions{
+	AllowNestedValues:      true,
+	AllowNonUniqueSections: true,
+}
+
+// LoadPackage reads package.godot from dir; a missing file yields an empty package.
+func LoadPackage(dir string) (*Package, error) {
+	source, err := os.ReadFile(filepath.Join(dir, PackageFileName))
+	if errors.Is(err, os.ErrNotExist) {
+		return NewPackage(nil)
+	}
 	if err != nil {
 		return nil, err
 	}
 
-	var config Package
+	return NewPackage(source)
+}
+
+func NewPackage(source []byte) (*Package, error) {
+	cfg, err := ini.LoadSources(packageLoadOptions, source)
+	if err != nil {
+		return nil, err
+	}
+
+	config := Package{file: cfg}
 
 	if err := cfg.MapTo(&config); err != nil {
 		return nil, err
@@ -166,11 +189,14 @@ func nestedSections(sections []*ini.Section) (map[string]PackageAssetConfigurati
 
 	for _, section := range sections {
 		if strings.HasPrefix(section.Name(), nestedAssetsPrefix) || strings.HasPrefix(section.Name(), nestedDevAssetsPrefix) {
-			asset := PackageAssetConfiguration{}
-			asset.Version = section.Key("version").String()
-			asset.Library = section.Key("library").String()
-			asset.Registry = section.Key("registry").String()
-			asset.Git = section.Key("git").String()
+			// KeysHash instead of Key: Key creates missing keys, which Save would write back empty
+			keys := section.KeysHash()
+			asset := PackageAssetConfiguration{
+				Version:  keys["version"],
+				Library:  keys["library"],
+				Registry: keys["registry"],
+				Git:      keys["git"],
+			}
 
 			if strings.HasPrefix(section.Name(), nestedAssetsPrefix) {
 				assets[strings.TrimPrefix(section.Name(), nestedAssetsPrefix)] = asset
@@ -181,4 +207,58 @@ func nestedSections(sections []*ini.Section) (map[string]PackageAssetConfigurati
 	}
 
 	return assets, devAssets
+}
+
+// AllAssets returns assets and dev assets in one map.
+func (p *Package) AllAssets() map[string]PackageAssetConfiguration {
+	all := maps.Clone(p.Assets)
+	maps.Copy(all, p.DevAssets)
+	return all
+}
+
+func (p *Package) AddAsset(name string, a PackageAssetConfiguration, dev bool) error {
+	if _, ok := p.AllAssets()[name]; ok {
+		return fmt.Errorf("%w: %s", ErrAssetExists, name)
+	}
+	if err := a.Validate(); err != nil {
+		return fmt.Errorf("asset %q: %w", name, err)
+	}
+
+	sectionName, assets := packageAssetSectionName, p.Assets
+	if dev {
+		sectionName, assets = packageDevAssetSectionName, p.DevAssets
+	}
+
+	if _, err := p.file.Section(sectionName).NewKey(name, inlineAssetValue(a)); err != nil {
+		return err
+	}
+	assets[name] = a
+
+	return nil
+}
+
+func (p *Package) RemoveAsset(name string) error {
+	if _, ok := p.AllAssets()[name]; !ok {
+		return fmt.Errorf("%w: %s", ErrAssetNotFound, name)
+	}
+
+	delete(p.Assets, name)
+	delete(p.DevAssets, name)
+	for _, sectionName := range []string{packageAssetSectionName, packageDevAssetSectionName} {
+		p.file.Section(sectionName).DeleteKey(name)
+		p.file.DeleteSection(sectionName + "." + name)
+	}
+
+	return nil
+}
+
+func (p *Package) Save(dir string) error {
+	return p.file.SaveTo(filepath.Join(dir, PackageFileName))
+}
+
+func inlineAssetValue(a PackageAssetConfiguration) string {
+	if a.Library != "" {
+		return fmt.Sprintf(`{ library="%s" }`, a.Library)
+	}
+	return fmt.Sprintf(`{ git="%s", version="%s" }`, a.Git, a.Version)
 }
