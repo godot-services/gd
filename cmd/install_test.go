@@ -139,3 +139,24 @@ func TestInstallRemovesPathsNoLongerShipped(t *testing.T) {
 		t.Fatal("old path not cleaned up")
 	}
 }
+
+func TestInstallRefusesLockEntryWithoutHash(t *testing.T) {
+	dir := newTestProject(t)
+	lib := newFakeLibrary(t)
+	if err := run(t, lib, "add", "1234"); err != nil {
+		t.Fatal(err)
+	}
+	lock, _ := godot.LoadLock(dir)
+	entry := lock["dialogic_2"]
+	entry.SHA256 = ""
+	lock["dialogic_2"] = entry
+	lock.Save(dir)
+	os.RemoveAll(filepath.Join(dir, "addons"))
+
+	if err := run(t, lib, "install"); !errors.Is(err, errLockWithoutHash) {
+		t.Fatal(err)
+	}
+	if exists(filepath.Join(dir, "addons", "x")) {
+		t.Fatal("installed without verification")
+	}
+}
