@@ -26,9 +26,9 @@
 
 - `gd add --version v1.2.0` must still set the git ref, not print gd's version (cobra's flag is root-only) — test in Task 1.
 - `go install …@v0.4.0` without ldflags must print `v0.4.0`, not `dev` — covered by the BuildInfo case in Task 1.
-- A local `go build` / `go run` must print `dev`, not `(devel)` — Task 1.
+- `go run` must print `dev`, not `(devel)` — Task 1. (A local `go build` with Go ≥ 1.24 prints a pseudo-version; accepted in the final review.)
 - A Windows target that no longer compiles must fail the PR, not the tag — snapshot job in Task 2.
-- A release created by hand with notes must keep its notes — `keep-existing` in Task 2, checked in the config review (not testable before a tag).
+- Release title and notes: tag first, then `gh release edit` (final review found GoReleaser overwrites the title of a pre-created release; ADR 0020).
 
 ---
 

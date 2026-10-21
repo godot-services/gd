@@ -7,8 +7,9 @@
 ## Context
 
 `gd --version` must print the release version. Release archives are built with
-`go build` from a tagged checkout; `go.mod` says Go 1.23, which does not stamp
-the VCS tag into `debug.ReadBuildInfo` for `go build` (that came in Go 1.24).
+`go build` from a tagged checkout; `go.mod` says Go 1.23, and CI builds with
+that version, which does not stamp the VCS tag into `debug.ReadBuildInfo` for
+`go build` (that came in Go 1.24).
 `go install github.com/godot-services/gd@vX` does record `vX` as the main
 module version.
 
@@ -24,6 +25,9 @@ module version.
 
 ## Consequences
 
-Release archives and `go install` print the same tag. Local builds print `dev`.
+Release archives and `go install` print the same tag. `go run` prints `dev`;
+a local `go build` with Go 1.24 or later prints the pseudo-version Go stamps
+(e.g. `v0.3.1-0.20261021112817-8eaf21562ced`, `+dirty` for a dirty tree), which
+names the commit and is kept on purpose.
 The flag lives on the root command only, so `gd add --version <ref>` keeps its
 meaning. Once `go.mod` moves to Go 1.24 or later, the ldflag could be dropped.

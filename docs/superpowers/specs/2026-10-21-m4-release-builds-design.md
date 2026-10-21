@@ -19,11 +19,12 @@ The package managers of gd#42 consume these archives later.
 - Today users install with `go install github.com/godot-services/gd@vX`; that
   keeps working.
 - Releases v0.1.0–v0.3.0 exist with hand-written notes, created together with
-  their tag (`gh release create vX --notes ...`). The pipeline must not replace
-  those notes.
+  their tag (`gh release create vX --notes ...`). From M4 on the tag comes
+  first and title and notes are edited afterwards (see Decisions).
 - `go.mod` says `go 1.23.2`; CI installs that version. Go only stamps the VCS
   tag into `debug.ReadBuildInfo` for `go build` from 1.24 on, so a release build
-  cannot rely on BuildInfo alone. `go install module@vX` does fill
+  cannot rely on BuildInfo alone. (A developer's newer local Go does stamp a
+  pseudo-version into `go build` output; `gd` shows it as is.) `go install module@vX` does fill
   `Main.Version`.
 - `gd` has OS-specific code (editor paths, detached start), so cross-compiling
   every target is worth checking before a tag, not only at release time.
@@ -33,7 +34,7 @@ The package managers of gd#42 consume these archives later.
 | Question | Decision | ADR |
 | --- | --- | --- |
 | Tooling | GoReleaser v2, run by `goreleaser/goreleaser-action` | 0020 |
-| Release flow | `release.mode: keep-existing`: assets are added to an existing release; a bare tag gets a release with a generated changelog | 0020 |
+| Release flow | push the bare tag; the workflow creates the release with a generated changelog; title and notes are set afterwards with `gh release edit` (GoReleaser overwrites the title of a release created beforehand). `release.mode: keep-existing` keeps edited notes on a re-run | 0020 |
 | Signing | GitHub artifact attestation (Sigstore, keyless) of the archives; no macOS notarization, no Windows code signing | 0021 |
 | Version | `-ldflags -X` in release builds, `debug.ReadBuildInfo` fallback, else `dev` | 0022 |
 

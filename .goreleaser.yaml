@@ -32,7 +32,8 @@ checksum:
 changelog:
   use: github
 
-# Keep hand-written release notes; a bare tag gets a release with a generated changelog.
+# A tag push creates the release; title and notes are edited afterwards (ADR 0020).
+# keep-existing keeps edited notes when the job is re-run.
 release:
   mode: keep-existing
   replace_existing_artifacts: true
