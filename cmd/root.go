@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime/debug"
 
 	"github.com/godot-services/gd/internal/godotbuilds"
 	"github.com/godot-services/gd/internal/source"
@@ -13,12 +14,14 @@ import (
 
 func newRootCmd() *cobra.Command {
 	opts := &options{}
+	info, ok := debug.ReadBuildInfo()
 
 	rootCmd := &cobra.Command{
 		Use:   "gd",
 		Short: "Package manager for Godot projects",
 		Long: `gd manages the addons of a Godot project.
 Assets are declared in package.godot and pinned in package-lock.godot.`,
+		Version:       resolveVersion(buildVersion, info, ok),
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
