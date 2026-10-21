@@ -41,6 +41,10 @@ One spec → plan → implementation cycle and one PR per chunk, one commit per 
 - A setting path maps to the file like Godot does it: the part before the first `/` is
   the section, the rest is the key (`application/config/name` → `[application]`
   `config/name`). Paths without `/` live before the first section (`config_version`).
+- Godot writes a key in quotes, escaped like a string, when it contains a space, a byte
+  outside printable ASCII or one of `=";[]` (`"Move Left"={...}` under `[input]`).
+  `gd` reads such keys under their decoded name (`input/Move Left`) and writes a new key
+  quoted by the same rule; an existing entry keeps its original key text.
 - Godot writes sections in alphabetical order. Keys keep their order within a section.
 - Defaults of settings are known only to Godot; a setting at its default is not in the
   file.

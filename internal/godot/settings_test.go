@@ -36,7 +36,7 @@ func paths(s *ProjectSettings) []string {
 }
 
 func TestSettingsRoundTrip(t *testing.T) {
-	for _, name := range []string{"fresh.godot", "full.godot", "crlf.godot"} {
+	for _, name := range []string{"fresh.godot", "full.godot", "crlf.godot", "quoted.godot"} {
 		src := readSample(t, name)
 		s, err := ParseProjectSettings(src)
 		if err != nil {
@@ -363,5 +363,42 @@ func TestDecodeStringUnknownEscape(t *testing.T) {
 func TestSetEmptySectionKeepsGap(t *testing.T) {
 	if got := setOn(t, []byte("[a]\n\n[b]\nx=1\n"), "a/k", "1"); got != "[a]\n\nk=1\n\n[b]\nx=1\n" {
 		t.Errorf("got %q", got)
+	}
+}
+
+func TestQuotedKeys(t *testing.T) {
+	s := parse(t, string(readSample(t, "quoted.godot")))
+	want := []string{"config_version", "application/config/name", "application/config/features", "autoload/Größe", "input/Move Left", "input/jump"}
+	if got := paths(s); !reflect.DeepEqual(got, want) {
+		t.Errorf("paths = %q", got)
+	}
+	if v, ok := s.Get("autoload/Größe"); !ok || v != `"*res://groesse.gd"` {
+		t.Errorf("autoload = %q %v", v, ok)
+	}
+	if v, ok := s.Get("input/Move Left"); !ok || !strings.HasPrefix(v, "{\n\"deadzone\": 0.2,") {
+		t.Errorf("Move Left = %q %v", v, ok)
+	}
+	if v, ok := parse(t, "[x]\n\"a=b\"=1\n").Get("x/a=b"); !ok || v != "1" {
+		t.Errorf("a=b = %q %v", v, ok)
+	}
+}
+
+func TestSetQuotedKeys(t *testing.T) {
+	src := string(readSample(t, "quoted.godot"))
+	got := setOn(t, []byte(src), "input/Move Left", "{}")
+	want := strings.Replace(src, "\"Move Left\"={\n\"deadzone\": 0.2,\n\"events\": []\n}\n", "\"Move Left\"={}\n", 1)
+	if got != want {
+		t.Errorf("existing: got %q", got)
+	}
+	got = setOn(t, []byte(src), "input/Jump Up", "{}")
+	if got != src+"\"Jump Up\"={}\n" {
+		t.Errorf("new: got %q", got)
+	}
+	got = setOn(t, []byte(src), "autoload/Ünï", `"*res://u.gd"`)
+	if !strings.Contains(got, "\"Größe\"=\"*res://groesse.gd\"\n\"Ünï\"=\"*res://u.gd\"\n") {
+		t.Errorf("non-ASCII: got %q", got)
+	}
+	if got := setOn(t, nil, "a/b;c", "1"); got != "[a]\n\n\"b;c\"=1\n" {
+		t.Errorf("semicolon: got %q", got)
 	}
 }

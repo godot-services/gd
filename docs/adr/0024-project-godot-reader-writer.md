@@ -22,6 +22,9 @@ the layout of everything we did not mean to touch, and needs an installed editor
   of the file is the error `project.godot:<line>: unterminated value`.
 - A setting path maps like Godot does: the part before the first `/` is the section,
   the rest is the key. A path without `/` lives before the first section.
+- A key in quotes (Godot quotes keys with spaces, non-ASCII bytes or `=";[]`, e.g.
+  `"Move Left"`) is read under its decoded name; a new key that needs quotes is
+  written quoted the same way.
 - `set` replaces an existing value in place. A new key goes to the end of its section;
   a new section is inserted alphabetically with a blank line before it. New lines use
   the file's line ending (CRLF if the first line has it). `unset` removes the entry;

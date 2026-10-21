@@ -72,10 +72,13 @@ func ParseProjectSettings(src []byte) (*ProjectSettings, error) {
 			b = block{kind: blockSection, name: strings.TrimSpace(name)}
 		case strings.HasPrefix(first, ";") || strings.TrimSpace(first) == "":
 		default:
-			eq := strings.Index(first, "=")
+			k := keyEnd(first)
+			eq := strings.Index(first[k:], "=")
 			if eq < 0 {
 				break // not an entry: keep the line verbatim
 			}
+
+			eq += k
 
 			var ok bool
 			if end, ok = valueEnd(text, pos+eq+1); !ok {
@@ -83,6 +86,9 @@ func ParseProjectSettings(src []byte) (*ProjectSettings, error) {
 			}
 
 			b = block{kind: blockEntry, name: strings.TrimSpace(first[:eq])}
+			if name, ok := DecodeString(b.name); ok {
+				b.name = name // Godot quotes keys with spaces, non-ASCII or =";[]
+			}
 			b.raw = strings.TrimRight(text[pos+eq+1:end], "\r\n")
 		}
 
@@ -93,6 +99,24 @@ func ParseProjectSettings(src []byte) (*ProjectSettings, error) {
 	}
 
 	return s, nil
+}
+
+// keyEnd returns the index after a leading quoted key ("..." with \ escapes), else 0.
+func keyEnd(line string) int {
+	if !strings.HasPrefix(line, `"`) {
+		return 0
+	}
+
+	for i := 1; i < len(line); i++ {
+		switch line[i] {
+		case '\\':
+			i++
+		case '"':
+			return i + 1
+		}
+	}
+
+	return 0
 }
 
 // lineEnd returns the index just after the line ending of the line starting at pos.
@@ -229,7 +253,12 @@ func (s *ProjectSettings) Set(path, raw string) error {
 		return nil
 	}
 
-	e := block{kind: blockEntry, name: key, raw: raw, text: key + "=" + raw + s.eol}
+	keyText := key
+	if strings.ContainsFunc(key, func(r rune) bool { return r < 33 || r > 126 || strings.ContainsRune(`=";[]`, r) }) {
+		keyText = EncodeString(key)
+	}
+
+	e := block{kind: blockEntry, name: key, raw: raw, text: keyText + "=" + raw + s.eol}
 
 	header := -1
 	for i, b := range s.blocks {
