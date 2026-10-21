@@ -207,21 +207,18 @@ func (s *ProjectSettings) insert(i int, nb ...block) {
 }
 
 func (s *ProjectSettings) Set(path, raw string) error {
-	if path == "" || strings.ContainsAny(path, "=[]\"\n\r") {
-		return fmt.Errorf("%w: %q", ErrInvalidSettingPath, path)
-	}
-
-	if end, ok := valueEnd(raw+"\n", 0); !ok || end != len(raw)+1 {
-		return fmt.Errorf("%w: %s", ErrUnbalancedValue, path)
-	}
-
 	section, key, found := strings.Cut(path, "/")
 	if !found {
 		section, key = "", path
 	}
 
-	entry := func(key string) block {
-		return block{kind: blockEntry, name: key, raw: raw, text: key + "=" + raw + s.eol}
+	if path == "" || strings.ContainsAny(path, "=[]\"\n\r") || strings.HasPrefix(path, ";") ||
+		path != strings.TrimSpace(path) || key == "" || (found && section == "") {
+		return fmt.Errorf("%w: %q", ErrInvalidSettingPath, path)
+	}
+
+	if end, ok := valueEnd(raw+"\n", 0); !ok || end != len(raw)+1 {
+		return fmt.Errorf("%w: %s", ErrUnbalancedValue, path)
 	}
 
 	if i := s.find(path); i >= 0 {
@@ -232,42 +229,49 @@ func (s *ProjectSettings) Set(path, raw string) error {
 		return nil
 	}
 
-	// header is the section header index, or -1 for the root section; last is the
-	// index after its final entry (or after the header and its leading comments).
-	header, last, next := -1, 0, len(s.blocks)
-	if section != "" {
-		for i, b := range s.blocks {
-			if b.kind == blockSection && b.name == section {
-				header = i
-				break
-			}
+	e := block{kind: blockEntry, name: key, raw: raw, text: key + "=" + raw + s.eol}
+
+	header := -1
+	for i, b := range s.blocks {
+		if section != "" && b.kind == blockSection && b.name == section {
+			header = i
+			break
 		}
 	}
 
 	if section != "" && header < 0 {
-		at, nb := len(s.blocks), []block{
-			{kind: blockSection, name: section, text: "[" + section + "]" + s.eol},
-			{text: s.eol}, entry(key), {text: s.eol},
-		}
-
-		for i, b := range s.blocks {
-			if b.kind == blockSection && b.name > section {
-				at = i
-				break
-			}
-		}
-
-		if at == len(s.blocks) {
-			nb = nb[:3]
-			if len(s.blocks) > 0 {
-				nb = append([]block{{text: s.eol}}, nb...)
-			}
-		}
-
-		s.insert(at, nb...)
-
-		return nil
+		s.insertSection(section, e)
+	} else {
+		s.insertKey(header, e)
 	}
+
+	return nil
+}
+
+func (s *ProjectSettings) insertSection(name string, e block) {
+	nb := []block{
+		{kind: blockSection, name: name, text: "[" + name + "]" + s.eol},
+		{text: s.eol}, e, {text: s.eol},
+	}
+
+	for i, b := range s.blocks {
+		if b.kind == blockSection && b.name > name {
+			s.insert(i, nb...)
+			return
+		}
+	}
+
+	nb = nb[:3] // at the end of the file: no trailing blank
+	if len(s.blocks) > 0 {
+		nb = append([]block{{text: s.eol}}, nb...)
+	}
+
+	s.insert(len(s.blocks), nb...)
+}
+
+// insertKey adds e to the section whose header is at index header (-1 for the root).
+func (s *ProjectSettings) insertKey(header int, e block) {
+	next := len(s.blocks)
 
 	for i := header + 1; i < len(s.blocks); i++ {
 		if s.blocks[i].kind == blockSection {
@@ -276,27 +280,31 @@ func (s *ProjectSettings) Set(path, raw string) error {
 		}
 	}
 
-	last = header + 1
+	at := 0
 	for i := header + 1; i < next; i++ {
 		if s.blocks[i].kind == blockEntry {
-			last = i + 1
+			at = i + 1
 		}
 	}
 
-	if last == header+1 { // no entries: after the leading comment/blank lines
-		last = header + 1
-		if section == "" {
-			last = next
+	switch {
+	case at > 0:
+		s.insert(at, e)
+	case header < 0:
+		s.insert(next, e) // root without entries: before the first section
+	default:
+		// empty section: after the header and one blank line, keeping the gap to the next
+		at = header + 1
+		if at < next && strings.TrimSpace(s.blocks[at].text) == "" && s.blocks[at].kind == blockOther {
+			at++
+			if at == next && next < len(s.blocks) {
+				s.insert(at, e, block{text: s.eol})
+				return
+			}
 		}
 
-		for section != "" && last < next && s.blocks[last].kind == blockOther {
-			last++
-		}
+		s.insert(at, e)
 	}
-
-	s.insert(last, entry(key))
-
-	return nil
 }
 
 func (s *ProjectSettings) Unset(path string) bool {
@@ -366,8 +374,10 @@ func DecodeString(raw string) (string, bool) {
 				sb.WriteByte('\n')
 			case 't':
 				sb.WriteByte('\t')
-			default:
+			case '\\', '"':
 				sb.WriteByte(body[i])
+			default:
+				return "", false
 			}
 		case c == '\\':
 			return "", false

@@ -258,7 +258,7 @@ func TestSetRejectsUnbalanced(t *testing.T) {
 
 func TestSetInvalidPath(t *testing.T) {
 	s := parse(t, "")
-	for _, p := range []string{"", "a=b", "[a]/b", "a/\"b", "a/b\nc", "a/b\rc"} {
+	for _, p := range []string{"", "a=b", "[a]/b", "a/\"b", "a/b\nc", "a/b\rc", "a/", "/x", ";a", " a/b", "a/b "} {
 		if err := s.Set(p, "1"); !errors.Is(err, ErrInvalidSettingPath) {
 			t.Errorf("%q: err = %v", p, err)
 		}
@@ -348,5 +348,20 @@ func TestStringArrayCodec(t *testing.T) {
 	}
 	if _, ok := DecodeStringArray("[1]"); ok {
 		t.Error("[1] decoded")
+	}
+}
+
+func TestDecodeStringUnknownEscape(t *testing.T) {
+	if _, ok := DecodeString(`"a\rb"`); ok {
+		t.Error("\\r decoded")
+	}
+	if _, ok := DecodeStringArray(`PackedStringArray("a\rb")`); ok {
+		t.Error("array with \\r decoded")
+	}
+}
+
+func TestSetEmptySectionKeepsGap(t *testing.T) {
+	if got := setOn(t, []byte("[a]\n\n[b]\nx=1\n"), "a/k", "1"); got != "[a]\n\nk=1\n\n[b]\nx=1\n" {
+		t.Errorf("got %q", got)
 	}
 }
