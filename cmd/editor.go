@@ -22,7 +22,7 @@ import (
 func newEditorCmd(opts *options) *cobra.Command {
 	c := &cobra.Command{Use: "editor", Short: "Manage Godot editors"}
 	c.AddCommand(newEditorInstallCmd(opts), newEditorUninstallCmd(), newEditorListCmd(), newEditorAvailableCmd(opts),
-		newEditorLinkCmd(), newEditorUnlinkCmd(), newEditorDefaultCmd(), newEditorUseCmd(), newOpenCmd("open"))
+		newEditorLinkCmd(), newEditorUnlinkCmd(), newEditorDefaultCmd(), newEditorUseCmd(), newOpenCmd("open"), newEditorShimCmd())
 	return c
 }
 
@@ -271,6 +271,10 @@ func newEditorLinkCmd() *cobra.Command {
 			}
 			if runtime.GOOS == "darwin" && fi.IsDir() && strings.HasSuffix(path, ".app") {
 				path = filepath.Join(path, "Contents", "MacOS", "Godot")
+			}
+			// the shim runs gd godot, which would run the shim again, forever
+			if shim, err := shimPathFor(runtime.GOOS); err == nil && sameFile(path, shim) {
+				return fmt.Errorf("%s is gd's godot shim, link the editor itself", path)
 			}
 			reg, dataDir, err := loadRegistry()
 			if err != nil {
