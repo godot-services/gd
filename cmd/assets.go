@@ -8,13 +8,30 @@ import (
 	"slices"
 	"time"
 
+	"github.com/godot-services/gd/internal/editor"
 	"github.com/godot-services/gd/internal/godot"
+	"github.com/godot-services/gd/internal/godotbuilds"
 	"github.com/godot-services/gd/internal/install"
 	"github.com/godot-services/gd/internal/source"
+	"github.com/spf13/cobra"
 )
 
 type options struct {
-	libraryURL string
+	libraryURL   string
+	buildsURL    string
+	buildsAPIURL string
+}
+
+func (o *options) builds() godotbuilds.Client {
+	token := os.Getenv("GH_TOKEN")
+	if token == "" {
+		token = os.Getenv("GITHUB_TOKEN")
+	}
+	// no total timeout: export templates are >1 GB; dial (30s, default), TLS and header timeouts catch dead servers
+	tr := http.DefaultTransport.(*http.Transport).Clone()
+	tr.TLSHandshakeTimeout = 30 * time.Second
+	tr.ResponseHeaderTimeout = 60 * time.Second
+	return godotbuilds.Client{BaseURL: o.buildsURL, APIURL: o.buildsAPIURL, Token: token, HTTP: &http.Client{Transport: tr}}
 }
 
 func (o *options) library() source.Library {
@@ -118,4 +135,17 @@ func loadProject() (dir string, pkg *godot.Package, lock godot.Lock, err error) 
 		return "", nil, nil, err
 	}
 	return project.Location, pkg, lock, nil
+}
+
+// warnVersionMismatch prints a warning to stderr when package.godot's editor version
+// and project.godot's config/features differ; it never fails the command.
+func warnVersionMismatch(cmd *cobra.Command, project *godot.Project, pkg *godot.Package) {
+	if pkg.Editor.Version == "" {
+		return
+	}
+	if v, err := project.GodotVersion(); err == nil {
+		if w := editor.VersionWarning(v, pkg.Editor.Version); w != "" {
+			cmd.PrintErrln(w)
+		}
+	}
 }

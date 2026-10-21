@@ -17,6 +17,9 @@ var (
 	ErrNoGodotVersion = errors.New("no Godot version in project.godot, pass --godot")
 
 	// only this line is read: project.godot may hold multi-line values ini.v1 cannot parse
+	ErrNoMainScene = errors.New("no main scene in project.godot")
+
+	mainSceneRe    = regexp.MustCompile(`(?m)^run/main_scene="([^"]*)"`)
 	featuresRe     = regexp.MustCompile(`(?m)^config/features=PackedStringArray\(([^)]*)\)`)
 	quotedRe       = regexp.MustCompile(`"([^"]*)"`)
 	godotVersionRe = regexp.MustCompile(`^\d+\.\d+(\.\d+)?$`)
@@ -86,4 +89,18 @@ func (p *Project) GodotVersion() (string, error) {
 	}
 
 	return "", ErrNoGodotVersion
+}
+
+// MainScene returns run/main_scene from project.godot, e.g. "res://main.tscn" or a uid:// reference.
+func (p *Project) MainScene() (string, error) {
+	source, err := os.ReadFile(filepath.Join(p.Location, ProjectFileName))
+	if err != nil {
+		return "", err
+	}
+
+	if m := mainSceneRe.FindSubmatch(source); m != nil && len(m[1]) > 0 {
+		return string(m[1]), nil
+	}
+
+	return "", ErrNoMainScene
 }

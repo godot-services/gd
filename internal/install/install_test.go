@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -156,7 +157,7 @@ func TestFetchVerifiesHash(t *testing.T) {
 		t.Fatal(path, got, err)
 	}
 
-	if _, _, err := Fetch(context.Background(), srv.Client(), srv.URL, "deadbeef", t.TempDir()); !errors.Is(err, ErrHashMismatch) {
+	if _, _, err := Fetch(context.Background(), srv.Client(), srv.URL, "deadbeef", t.TempDir()); !errors.Is(err, ErrHashMismatch) || !strings.Contains(err.Error(), "checksum mismatch") {
 		t.Fatal(err)
 	}
 }

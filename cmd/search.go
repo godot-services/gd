@@ -27,7 +27,14 @@ func newSearchCmd(opts *options) *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("%w (or pass --godot)", err)
 				}
-				if godotVersion, err = project.GodotVersion(); err != nil {
+				pkg, err := godot.LoadPackage(project.Location)
+				if err != nil {
+					return err
+				}
+				if pkg.Editor.Version != "" {
+					godotVersion = godot.MajorMinor(pkg.Editor.Version)
+					warnVersionMismatch(cmd, project, pkg)
+				} else if godotVersion, err = project.GodotVersion(); err != nil {
 					return err
 				}
 			}
@@ -56,7 +63,7 @@ func newSearchCmd(opts *options) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&godotVersion, "godot", "", "Godot version to search for (default: from project.godot)")
+	cmd.Flags().StringVar(&godotVersion, "godot", "", "Godot version to search for (default: [editor] version of package.godot, else project.godot)")
 	cmd.Flags().IntVar(&max, "max", 20, "maximum number of results (1-500)")
 
 	return cmd

@@ -3,6 +3,8 @@ package cmd
 import (
 	"archive/zip"
 	"bytes"
+	"crypto/sha512"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,6 +13,8 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 	"testing"
 )
 
@@ -26,12 +30,15 @@ func newTestProject(t *testing.T) string {
 	return dir
 }
 
-// isolateCache points os.UserCacheDir at a temp dir (HOME on macOS, XDG_CACHE_HOME on Linux).
+// isolateCache points the user cache and data dirs at a temp dir.
 func isolateCache(t *testing.T) string {
 	t.Helper()
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("XDG_CACHE_HOME", filepath.Join(home, ".cache"))
+	t.Setenv("XDG_DATA_HOME", filepath.Join(home, ".local", "share"))
+	t.Setenv("APPDATA", filepath.Join(home, "AppData", "Roaming"))
+	t.Setenv("LOCALAPPDATA", filepath.Join(home, "AppData", "Local"))
 	return home
 }
 
@@ -136,4 +143,70 @@ func runOut(t *testing.T, lib *fakeLibrary, args ...string) (string, error) {
 func exists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
+}
+
+// newFakeBuilds serves godot-builds style downloads for any tag. The zip holds an
+// executable for every OS layout, so whichever the host picks is found.
+func newFakeBuilds(t *testing.T) string {
+	t.Helper()
+	suffixes := []string{
+		"_linux.x86_64.zip", "_linux.arm64.zip", "_linux_x86_64.zip", "_linux_arm64.zip",
+		"_macos.universal.zip", "_win64.exe.zip", "_win64.zip", "_windows_arm64.exe.zip", "_windows_arm64.zip",
+	}
+	var mu sync.Mutex
+	zips := map[string][]byte{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+		if len(parts) != 2 {
+			http.NotFound(w, r)
+			return
+		}
+		tag, name := parts[0], parts[1]
+		// zipBytes iterates a map, so cache per tag to keep the hash stable
+		mu.Lock()
+		z, ok := zips[tag]
+		if !ok {
+			z = zipBytes(t, map[string]string{
+				"Godot_v" + tag + "_linux.x86_64": "bin",
+				"Godot.app/Contents/MacOS/Godot":  "bin",
+				"Godot_v" + tag + "_win64.exe":    "bin",
+			})
+			zips[tag] = z
+		}
+		mu.Unlock()
+		sum := sha512.Sum512(z)
+		tpzFor := func(mono bool) []byte {
+			mu.Lock()
+			defer mu.Unlock()
+			key := fmt.Sprint(tag, "|tpz|", mono)
+			if zips[key] == nil {
+				v := strings.Replace(tag, "-", ".", 1)
+				if mono {
+					v += ".mono"
+				}
+				zips[key] = zipBytes(t, map[string]string{"templates/version.txt": v + "\n", "templates/linux_release.x86_64": "tpl"})
+			}
+			return zips[key]
+		}
+		if strings.HasSuffix(name, ".tpz") {
+			w.Write(tpzFor(strings.Contains(name, "_mono_")))
+			return
+		}
+		if name == "SHA512-SUMS.txt" {
+			for _, mono := range []bool{false, true} {
+				ts := sha512.Sum512(tpzFor(mono))
+				fmt.Fprintf(w, "%s  %s\n", hex.EncodeToString(ts[:]), "Godot_v"+tag+map[bool]string{true: "_mono", false: ""}[mono]+"_export_templates.tpz")
+			}
+			for _, mono := range []string{"", "mono_"} {
+				for _, s := range suffixes {
+					n := "Godot_v" + tag + strings.Replace(s, "_", "_"+mono, 1)
+					fmt.Fprintf(w, "%s  %s\n", hex.EncodeToString(sum[:]), n)
+				}
+			}
+			return
+		}
+		w.Write(z)
+	}))
+	t.Cleanup(srv.Close)
+	return srv.URL
 }

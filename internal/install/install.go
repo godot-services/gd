@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"hash"
 	"io"
 	"net/http"
 	"os"
@@ -20,7 +21,7 @@ import (
 const addonsDir = "addons"
 
 var (
-	ErrHashMismatch = errors.New("sha256 mismatch")
+	ErrHashMismatch = errors.New("checksum mismatch")
 	ErrNoAddons     = errors.New("asset contains no addons/ folder")
 	ErrUnsafePath   = errors.New("unsafe path")
 	ErrForeignPath  = errors.New("folder exists and is not managed by this asset")
@@ -29,6 +30,11 @@ var (
 // Fetch downloads url into tmpDir and returns the file path and its SHA-256.
 // A non-empty wantSHA256 that does not match fails with ErrHashMismatch.
 func Fetch(ctx context.Context, client *http.Client, url, wantSHA256, tmpDir string) (zipPath, gotSHA256 string, err error) {
+	return FetchHash(ctx, client, url, wantSHA256, tmpDir, sha256.New)
+}
+
+// FetchHash is Fetch for any hash; want and the returned sum are hex.
+func FetchHash(ctx context.Context, client *http.Client, url, want, tmpDir string, newHash func() hash.Hash) (zipPath, gotSum string, err error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return "", "", err
@@ -53,21 +59,21 @@ func Fetch(ctx context.Context, client *http.Client, url, wantSHA256, tmpDir str
 		}
 	}()
 
-	hash := sha256.New()
-	if _, err = io.Copy(io.MultiWriter(f, hash), resp.Body); err != nil {
+	h := newHash()
+	if _, err = io.Copy(io.MultiWriter(f, h), resp.Body); err != nil {
 		return "", "", fmt.Errorf("download %s: %w", url, err)
 	}
 	if err = f.Close(); err != nil {
 		return "", "", err
 	}
 
-	gotSHA256 = hex.EncodeToString(hash.Sum(nil))
-	if wantSHA256 != "" && gotSHA256 != wantSHA256 {
-		err = fmt.Errorf("%w for %s: got %s, want %s", ErrHashMismatch, url, gotSHA256, wantSHA256)
+	gotSum = hex.EncodeToString(h.Sum(nil))
+	if want != "" && gotSum != want {
+		err = fmt.Errorf("%w for %s: got %s, want %s", ErrHashMismatch, url, gotSum, want)
 		return "", "", err
 	}
 
-	return f.Name(), gotSHA256, nil
+	return f.Name(), gotSum, nil
 }
 
 // FetchCached returns <cacheDir>/<sha256>.zip when it exists and matches

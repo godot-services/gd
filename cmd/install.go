@@ -28,6 +28,10 @@ func newInstallCmd(opts *options) *cobra.Command {
 				return err
 			}
 
+			if project, err := godot.NewProject("."); err == nil {
+				warnVersionMismatch(cmd, project, pkg)
+			}
+
 			lib := opts.library()
 			known, assets := pkg.AllAssets(), pkg.AllAssets()
 			if noDev {

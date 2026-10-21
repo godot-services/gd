@@ -36,6 +36,44 @@ aborts when a download does not match the SHA-256 in `package-lock.godot`. Only
 folders it did not install. See [configuration files](/docs/configuration-files.md)
 and the [decision records](/docs/adr/README.md) for why it works this way.
 
+## Editors
+
+`gd` also manages Godot editors. Downloads come from
+[github.com/godotengine/godot-builds](https://github.com/godotengine/godot-builds)
+and are SHA-512 verified.
+
+```sh
+gd editor available [--pre]                               # versions you can install
+gd editor install [version] [--dotnet]                    # no version: [editor] version from package.godot
+gd editor list
+gd editor link <alias> <path>                             # register an editor you installed yourself
+gd editor unlink <alias>
+gd editor default <name>                                  # global default editor
+gd editor use <name>                                      # pick an editor on this machine (package.local.godot, not committed)
+gd editor use --clear                                     # drop that pick again
+gd editor uninstall <name>
+```
+
+## Run
+
+```sh
+gd open [--detach]                                        # open the project in the editor (long form: gd editor open)
+gd start [scene] [--detach]                               # run the project (or a scene)
+gd godot -- --version                                     # run the project's editor with any arguments
+```
+
+## Export templates
+
+```sh
+gd templates install [version] [--dotnet] [--force]
+gd templates list
+gd templates uninstall <version>
+```
+
+See [ADR 0017](/docs/adr/0017-editor-management.md),
+[0018](/docs/adr/0018-godot-version-spec.md) and
+[0019](/docs/adr/0019-export-templates.md).
+
 > [!NOTE]
 > Following roadmaps are currently `wip`
 
@@ -51,7 +89,7 @@ and the [decision records](/docs/adr/README.md) for why it works this way.
 | cmd    | description                             | state |
 | ------ | --------------------------------------- | ----- |
 | asset  | manage assets of godot project          | todo  |
-| editor | manage multiple version of godot editor | todo  |
+| editor | manage multiple version of godot editor | done  |
 
 # command `asset` subcommands roadmap
 
@@ -65,10 +103,10 @@ and the [decision records](/docs/adr/README.md) for why it works this way.
 
 | cmd              | description                                    | state |
 | ---------------- | ---------------------------------------------- | ----- |
-| editor list      | list current installed editor versions         | todo  |
-| editor install   | install godot editor for specified version     | todo  |
-| editor uninstall | uninstall godot editor for specified version   | todo  |
-| editor default   | set default godot editor for specified version | todo  |
+| editor list      | list current installed editor versions         | done  |
+| editor install   | install godot editor for specified version     | done  |
+| editor uninstall | uninstall godot editor for specified version   | done  |
+| editor default   | set default godot editor for specified version | done  |
 
 # shortcut commands
 
@@ -80,3 +118,7 @@ and the [decision records](/docs/adr/README.md) for why it works this way.
 | outdated | show library assets with a newer version            | done  |
 | update   | update assets to their latest version               | done  |
 | cache    | inspect or clear the download cache                 | done  |
+| open      | open the project in its editor                    | done  |
+| start     | run the project or a scene                        | done  |
+| godot     | run the project's editor with arguments           | done  |
+| templates | install, list, uninstall export templates         | done  |

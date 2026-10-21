@@ -51,6 +51,7 @@ type PackageConfiguration struct {
 
 type PackageEditorConfiguration struct {
 	Version string `ini:"version"`
+	Dotnet  bool   `ini:"dotnet"`
 }
 
 type PackageAssetConfiguration struct {
@@ -129,6 +130,10 @@ func NewPackage(source []byte) (*Package, error) {
 	nestedAssets, nestedDevAssets := nestedSections(cfg.Sections())
 	maps.Copy(config.Assets, nestedAssets)
 	maps.Copy(config.DevAssets, nestedDevAssets)
+
+	if v := config.Editor.Version; v != "" && !godotSpecRe.MatchString(v) {
+		return nil, fmt.Errorf("editor version %q: %w", v, ErrInvalidGodotVersion)
+	}
 
 	for _, assets := range []map[string]PackageAssetConfiguration{config.Assets, config.DevAssets} {
 		for name, asset := range assets {
