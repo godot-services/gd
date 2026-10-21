@@ -8,7 +8,11 @@ import (
 	"strings"
 )
 
-var ErrUnterminatedValue = errors.New("unterminated value")
+var (
+	ErrUnterminatedValue  = errors.New("unterminated value")
+	ErrUnbalancedValue    = errors.New("unbalanced value")
+	ErrInvalidSettingPath = errors.New("invalid setting path")
+)
 
 type Setting struct{ Path, Raw string }
 
@@ -64,8 +68,8 @@ func ParseProjectSettings(src []byte) (*ProjectSettings, error) {
 
 		switch {
 		case strings.HasPrefix(first, "["):
-			b = block{kind: blockSection, name: strings.TrimSpace(strings.TrimRight(first, "\r\n"))}
-			b.name = strings.TrimSuffix(strings.TrimPrefix(b.name, "["), "]")
+			name, _, _ := strings.Cut(first[1:], "]")
+			b = block{kind: blockSection, name: strings.TrimSpace(name)}
 		case strings.HasPrefix(first, ";") || strings.TrimSpace(first) == "":
 		default:
 			eq := strings.Index(first, "=")
@@ -168,4 +172,276 @@ func (s *ProjectSettings) List() []Setting {
 	}
 
 	return out
+}
+
+// find returns the index of the first entry block for path.
+func (s *ProjectSettings) find(path string) int {
+	section := ""
+
+	for i, b := range s.blocks {
+		switch b.kind {
+		case blockSection:
+			section = b.name
+		case blockEntry:
+			p := b.name
+			if section != "" {
+				p = section + "/" + b.name
+			}
+
+			if p == path {
+				return i
+			}
+		}
+	}
+
+	return -1
+}
+
+// insert puts blocks at index i, first giving a previous line without ending one.
+func (s *ProjectSettings) insert(i int, nb ...block) {
+	if i > 0 && !strings.HasSuffix(s.blocks[i-1].text, "\n") {
+		s.blocks[i-1].text += s.eol
+	}
+
+	s.blocks = append(s.blocks[:i], append(nb, s.blocks[i:]...)...)
+}
+
+func (s *ProjectSettings) Set(path, raw string) error {
+	if path == "" || strings.ContainsAny(path, "=[]\"\n\r") {
+		return fmt.Errorf("%w: %q", ErrInvalidSettingPath, path)
+	}
+
+	if end, ok := valueEnd(raw+"\n", 0); !ok || end != len(raw)+1 {
+		return fmt.Errorf("%w: %s", ErrUnbalancedValue, path)
+	}
+
+	section, key, found := strings.Cut(path, "/")
+	if !found {
+		section, key = "", path
+	}
+
+	entry := func(key string) block {
+		return block{kind: blockEntry, name: key, raw: raw, text: key + "=" + raw + s.eol}
+	}
+
+	if i := s.find(path); i >= 0 {
+		b := &s.blocks[i]
+		b.raw = raw
+		b.text = b.text[:strings.Index(b.text, "=")+1] + raw + s.eol
+
+		return nil
+	}
+
+	// header is the section header index, or -1 for the root section; last is the
+	// index after its final entry (or after the header and its leading comments).
+	header, last, next := -1, 0, len(s.blocks)
+	if section != "" {
+		for i, b := range s.blocks {
+			if b.kind == blockSection && b.name == section {
+				header = i
+				break
+			}
+		}
+	}
+
+	if section != "" && header < 0 {
+		at, nb := len(s.blocks), []block{
+			{kind: blockSection, name: section, text: "[" + section + "]" + s.eol},
+			{text: s.eol}, entry(key), {text: s.eol},
+		}
+
+		for i, b := range s.blocks {
+			if b.kind == blockSection && b.name > section {
+				at = i
+				break
+			}
+		}
+
+		if at == len(s.blocks) {
+			nb = nb[:3]
+			if len(s.blocks) > 0 {
+				nb = append([]block{{text: s.eol}}, nb...)
+			}
+		}
+
+		s.insert(at, nb...)
+
+		return nil
+	}
+
+	for i := header + 1; i < len(s.blocks); i++ {
+		if s.blocks[i].kind == blockSection {
+			next = i
+			break
+		}
+	}
+
+	last = header + 1
+	for i := header + 1; i < next; i++ {
+		if s.blocks[i].kind == blockEntry {
+			last = i + 1
+		}
+	}
+
+	if last == header+1 { // no entries: after the leading comment/blank lines
+		last = header + 1
+		if section == "" {
+			last = next
+		}
+
+		for section != "" && last < next && s.blocks[last].kind == blockOther {
+			last++
+		}
+	}
+
+	s.insert(last, entry(key))
+
+	return nil
+}
+
+func (s *ProjectSettings) Unset(path string) bool {
+	i := s.find(path)
+	if i < 0 {
+		return false
+	}
+
+	s.blocks = append(s.blocks[:i], s.blocks[i+1:]...)
+
+	return true
+}
+
+// Save writes project.godot atomically, keeping the file mode.
+func (s *ProjectSettings) Save() (err error) {
+	file := filepath.Join(s.dir, ProjectFileName)
+
+	fi, err := os.Stat(file)
+	if err != nil {
+		return err
+	}
+
+	tmp, err := os.CreateTemp(s.dir, ".project.godot-*")
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if err != nil {
+			_ = tmp.Close()
+			_ = os.Remove(tmp.Name())
+		}
+	}()
+
+	if _, err = tmp.Write(s.Bytes()); err != nil {
+		return err
+	}
+
+	if err = tmp.Chmod(fi.Mode().Perm()); err != nil {
+		return err
+	}
+
+	if err = tmp.Close(); err != nil {
+		return err
+	}
+
+	return os.Rename(tmp.Name(), file)
+}
+
+// DecodeString decodes a plain "..." value; ok is false for anything else.
+func DecodeString(raw string) (string, bool) {
+	if len(raw) < 2 || raw[0] != '"' || raw[len(raw)-1] != '"' {
+		return "", false
+	}
+
+	var sb strings.Builder
+
+	body := raw[1 : len(raw)-1]
+	for i := 0; i < len(body); i++ {
+		switch c := body[i]; {
+		case c == '"':
+			return "", false
+		case c == '\\' && i+1 < len(body):
+			i++
+			switch body[i] {
+			case 'n':
+				sb.WriteByte('\n')
+			case 't':
+				sb.WriteByte('\t')
+			default:
+				sb.WriteByte(body[i])
+			}
+		case c == '\\':
+			return "", false
+		default:
+			sb.WriteByte(c)
+		}
+	}
+
+	return sb.String(), true
+}
+
+func EncodeString(s string) string {
+	return `"` + strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(s) + `"`
+}
+
+// DecodeStringArray decodes PackedStringArray("a", "b"); ok is false for any other value.
+func DecodeStringArray(raw string) ([]string, bool) {
+	body, ok := strings.CutPrefix(raw, "PackedStringArray(")
+	if !ok {
+		return nil, false
+	}
+
+	body, ok = strings.CutSuffix(strings.TrimSpace(body), ")")
+	if !ok {
+		return nil, false
+	}
+
+	out := []string{}
+
+	for body = strings.TrimSpace(body); body != ""; {
+		if body[0] != '"' {
+			return nil, false
+		}
+
+		end := 1
+		for end < len(body) && body[end] != '"' {
+			if body[end] == '\\' {
+				end++
+			}
+
+			end++
+		}
+
+		if end >= len(body) {
+			return nil, false
+		}
+
+		item, ok := DecodeString(body[:end+1])
+		if !ok {
+			return nil, false
+		}
+
+		out = append(out, item)
+
+		body = strings.TrimSpace(body[end+1:])
+		if body == "" {
+			break
+		}
+
+		if body[0] != ',' {
+			return nil, false
+		}
+
+		body = strings.TrimSpace(body[1:])
+	}
+
+	return out, true
+}
+
+func EncodeStringArray(items []string) string {
+	enc := make([]string, len(items))
+	for i, it := range items {
+		enc[i] = EncodeString(it)
+	}
+
+	return "PackedStringArray(" + strings.Join(enc, ", ") + ")"
 }

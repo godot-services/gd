@@ -152,3 +152,201 @@ func TestLoadProjectSettings(t *testing.T) {
 		t.Errorf("config_version = %q", got)
 	}
 }
+
+func setOn(t *testing.T, src []byte, path, raw string) string {
+	t.Helper()
+	s, err := ParseProjectSettings(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Set(path, raw); err != nil {
+		t.Fatal(err)
+	}
+	return string(s.Bytes())
+}
+
+func TestSetReplacesInPlace(t *testing.T) {
+	src := readSample(t, "full.godot")
+	got := setOn(t, src, "display/window/size/viewport_width", "1920")
+	want := strings.Replace(string(src), "viewport_width=1280", "viewport_width=1920", 1)
+	if got != want {
+		t.Errorf("got %q", got)
+	}
+}
+
+func TestSetMultiLineInPlace(t *testing.T) {
+	src := string(readSample(t, "full.godot"))
+	got := setOn(t, []byte(src), "input/jump", "{}")
+	i := strings.Index(src, "jump={")
+	j := strings.Index(src, "\n}\n") + 3
+	want := src[:i] + "jump={}\n" + src[j:]
+	if got != want {
+		t.Errorf("got %q", got)
+	}
+}
+
+func TestSetNewKeyAppendsToSection(t *testing.T) {
+	src := string(readSample(t, "fresh.godot"))
+	got := setOn(t, []byte(src), "application/run/main_scene", `"res://m.tscn"`)
+	want := src + "run/main_scene=\"res://m.tscn\"\n"
+	if got != want {
+		t.Errorf("got %q", got)
+	}
+}
+
+func TestSetNewSectionAlphabetical(t *testing.T) {
+	src := string(readSample(t, "full.godot"))
+	got := setOn(t, []byte(src), "gui/theme/custom", `"res://t.tres"`)
+	want := strings.Replace(src, "[input]", "[gui]\n\ntheme/custom=\"res://t.tres\"\n\n[input]", 1)
+	if got != want {
+		t.Errorf("got %q", got)
+	}
+	got = setOn(t, []byte(src), "zzz/a", "1")
+	if got != src+"\n[zzz]\n\na=1\n" {
+		t.Errorf("got %q", got)
+	}
+}
+
+func TestSetRootKey(t *testing.T) {
+	src := string(readSample(t, "fresh.godot"))
+	got := setOn(t, []byte(src), "foo", "1")
+	want := strings.Replace(src, "config_version=5\n", "config_version=5\nfoo=1\n", 1)
+	if got != want {
+		t.Errorf("got %q", got)
+	}
+	if got := setOn(t, []byte("; c\n\n[a]\nx=1\n"), "foo", "1"); got != "; c\n\nfoo=1\n[a]\nx=1\n" {
+		t.Errorf("got %q", got)
+	}
+	if got := setOn(t, nil, "foo", "1"); got != "foo=1\n" {
+		t.Errorf("got %q", got)
+	}
+}
+
+func TestSetCRLF(t *testing.T) {
+	got := setOn(t, readSample(t, "crlf.godot"), "application/run/main_scene", `"x"`)
+	if !strings.Contains(got, "run/main_scene=\"x\"\r\n") {
+		t.Errorf("got %q", got)
+	}
+	if strings.Contains(strings.ReplaceAll(got, "\r\n", ""), "\n") {
+		t.Errorf("bare LF in %q", got)
+	}
+}
+
+func TestSetNoTrailingNewline(t *testing.T) {
+	if got := setOn(t, []byte("[a]\nx=1"), "a/y", "2"); got != "[a]\nx=1\ny=2\n" {
+		t.Errorf("got %q", got)
+	}
+}
+
+func TestSetEmptyFile(t *testing.T) {
+	if got := setOn(t, nil, "application/config/name", `"G"`); got != "[application]\n\nconfig/name=\"G\"\n" {
+		t.Errorf("got %q", got)
+	}
+}
+
+func TestSetRejectsUnbalanced(t *testing.T) {
+	s := parse(t, "[a]\nx=1\n")
+	for _, raw := range []string{"[1, 2", "\"open"} {
+		if err := s.Set("a/x", raw); !errors.Is(err, ErrUnbalancedValue) {
+			t.Errorf("%q: err = %v", raw, err)
+		}
+	}
+	if string(s.Bytes()) != "[a]\nx=1\n" {
+		t.Error("bytes changed")
+	}
+}
+
+func TestSetInvalidPath(t *testing.T) {
+	s := parse(t, "")
+	for _, p := range []string{"", "a=b", "[a]/b", "a/\"b", "a/b\nc", "a/b\rc"} {
+		if err := s.Set(p, "1"); !errors.Is(err, ErrInvalidSettingPath) {
+			t.Errorf("%q: err = %v", p, err)
+		}
+	}
+}
+
+func TestSetDuplicateKeyFirstWins(t *testing.T) {
+	if got := setOn(t, []byte("[a]\nx=1\nx=2\n"), "a/x", "3"); got != "[a]\nx=3\nx=2\n" {
+		t.Errorf("got %q", got)
+	}
+}
+
+func TestSectionHeaderWithComment(t *testing.T) {
+	s := parse(t, "[a] ; c\nx=1\n")
+	if v, ok := s.Get("a/x"); !ok || v != "1" {
+		t.Errorf("got %q %v", v, ok)
+	}
+}
+
+func TestUnset(t *testing.T) {
+	s := parse(t, string(readSample(t, "full.godot")))
+	if !s.Unset("autoload/Global") {
+		t.Fatal("not removed")
+	}
+	if !strings.Contains(string(s.Bytes()), "[autoload]\n\n\n[display]") || strings.Contains(string(s.Bytes()), "Global") {
+		t.Errorf("got %q", s.Bytes())
+	}
+	if s.Unset("autoload/Global") {
+		t.Error("second unset true")
+	}
+}
+
+func TestSaveAtomic(t *testing.T) {
+	dir := t.TempDir()
+	file := filepath.Join(dir, ProjectFileName)
+	if err := os.WriteFile(file, readSample(t, "full.godot"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	s, err := LoadProjectSettings(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Set("display/window/size/viewport_width", "1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Save(); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile(file)
+	if string(got) != string(s.Bytes()) {
+		t.Error("content differs")
+	}
+	if fi, _ := os.Stat(file); fi.Mode().Perm() != 0o600 {
+		t.Errorf("mode = %v", fi.Mode())
+	}
+	if ents, _ := os.ReadDir(dir); len(ents) != 1 {
+		t.Errorf("%d files in dir", len(ents))
+	}
+}
+
+func TestStringCodec(t *testing.T) {
+	enc := EncodeString("a\"b\\c\nd")
+	if enc != "\"a\\\"b\\\\c\nd\"" {
+		t.Errorf("enc = %q", enc)
+	}
+	if got, ok := DecodeString(enc); !ok || got != "a\"b\\c\nd" {
+		t.Errorf("dec = %q %v", got, ok)
+	}
+	if _, ok := DecodeString("12"); ok {
+		t.Error("12 decoded")
+	}
+}
+
+func TestStringArrayCodec(t *testing.T) {
+	got, ok := DecodeStringArray(`PackedStringArray("res://a", "b\"c")`)
+	if !ok || !reflect.DeepEqual(got, []string{"res://a", `b"c`}) {
+		t.Errorf("got %q %v", got, ok)
+	}
+	if got, ok := DecodeStringArray("PackedStringArray()"); !ok || len(got) != 0 {
+		t.Errorf("empty: %q %v", got, ok)
+	}
+	if EncodeStringArray(nil) != "PackedStringArray()" {
+		t.Error("encode empty")
+	}
+	if EncodeStringArray([]string{"a", "b"}) != `PackedStringArray("a", "b")` {
+		t.Error("encode")
+	}
+	if _, ok := DecodeStringArray("[1]"); ok {
+		t.Error("[1] decoded")
+	}
+}
