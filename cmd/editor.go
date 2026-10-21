@@ -212,16 +212,17 @@ func newEditorListCmd() *cobra.Command {
 }
 
 func newEditorAvailableCmd(opts *options) *cobra.Command {
-	var pre bool
+	var pre, refresh bool
 	c := &cobra.Command{
 		Use:   "available",
 		Short: "List Godot 4 versions from godot-builds",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			tags, err := opts.builds().Available(cmd.Context(), pre)
+			tags, err := releases(cmd, opts.builds(), refresh)
 			if err != nil {
 				return err
 			}
+			tags = slices.DeleteFunc(tags, func(t string) bool { return !pre && !strings.HasSuffix(t, "-stable") })
 			if len(tags) == 0 {
 				cmd.Println("no Godot 4 releases found")
 			}
@@ -232,6 +233,7 @@ func newEditorAvailableCmd(opts *options) *cobra.Command {
 		},
 	}
 	c.Flags().BoolVar(&pre, "pre", false, "include rc, beta and dev releases")
+	c.Flags().BoolVar(&refresh, "refresh", false, "ask godot-builds even when the cached list is less than an hour old")
 	return c
 }
 

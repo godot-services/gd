@@ -43,7 +43,7 @@ and the [decision records](/docs/adr/README.md) for why it works this way.
 and are SHA-512 verified.
 
 ```sh
-gd editor available [--pre]                               # versions you can install
+gd editor available [--pre] [--refresh]                   # versions you can install (cached for an hour)
 gd editor install [version] [--dotnet]                    # no version: [editor] version from package.godot
 gd editor list
 gd editor link <alias> <path>                             # register an editor you installed yourself

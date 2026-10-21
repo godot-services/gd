@@ -22,9 +22,10 @@ supersedes the old one.
 | [0013](0013-hardening-after-mvp-audit.md)     | Hardening after the MVP audit          | accepted |
 | [0014](0014-zip-cache.md)                     | Cache downloaded zips by SHA-256       | accepted |
 | [0015](0015-comfort-commands.md)              | Comfort commands: search, --no-dev, outdated, update | accepted |
-| [0016](0016-cache-commands.md)                | Cache commands                         | accepted |
-| [0017](0017-editor-management.md)            | Editor management: godot-builds, managed and linked editors | accepted |
+| [0016](0016-cache-commands.md)                | Cache commands                         | amended by 0020 |
+| [0017](0017-editor-management.md)            | Editor management: godot-builds, managed and linked editors | amended by 0020 |
 | [0018](0018-godot-version-spec.md)            | Godot version spec and local editor choice | accepted |
 | [0019](0019-export-templates.md)               | Export templates: source, verification, target dirs | accepted |
+| [0020](0020-release-list-cache.md)             | Cache the godot-builds release list    | accepted |
 
 Template: copy [template.md](template.md).

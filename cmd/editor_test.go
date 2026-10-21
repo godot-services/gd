@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/godot-services/gd/internal/editor"
 	"github.com/godot-services/gd/internal/godot"
@@ -142,6 +144,7 @@ func TestEditorList(t *testing.T) {
 }
 
 func TestEditorAvailable(t *testing.T) {
+	isolateCache(t)
 	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("page") == "1" {
 			w.Write([]byte(`[{"tag_name":"4.8-beta1"},{"tag_name":"4.7.2-stable"},{"tag_name":"3.6-stable"}]`))
@@ -161,11 +164,174 @@ func TestEditorAvailable(t *testing.T) {
 }
 
 func TestEditorAvailableNone(t *testing.T) {
+	isolateCache(t)
 	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(`[]`)) }))
 	defer api.Close()
 	out, err := runEditor(t, "", "--builds-api-url", api.URL, "editor", "available")
 	if err != nil || out != "no Godot 4 releases found\n" {
 		t.Errorf("out = %q, err = %v", out, err)
+	}
+}
+
+// releasesAPI serves one release page with ETag "v1" and answers 304 to it; status overrides everything.
+func releasesAPI(t *testing.T, status *int) (url string, hits *int) {
+	t.Helper()
+	hits = new(int)
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		*hits++
+		switch {
+		case status != nil && *status != 0:
+			w.WriteHeader(*status)
+		case r.URL.Query().Get("page") != "1":
+			w.Write([]byte(`[]`))
+		case r.Header.Get("If-None-Match") == `"v1"`:
+			w.WriteHeader(http.StatusNotModified)
+		default:
+			w.Header().Set("ETag", `"v1"`)
+			w.Write([]byte(`[{"tag_name":"4.8-beta1"},{"tag_name":"4.7.2-stable"}]`))
+		}
+	}))
+	t.Cleanup(api.Close)
+	return api.URL, hits
+}
+
+func runAvailable(t *testing.T, api string, args ...string) (out, errOut string, err error) {
+	t.Helper()
+	var o, e bytes.Buffer
+	root := newRootCmd()
+	root.SetArgs(append([]string{"--builds-api-url", api, "editor", "available"}, args...))
+	root.SetOut(&o)
+	root.SetErr(&e)
+	err = root.Execute()
+	return o.String(), e.String(), err
+}
+
+func releasesCachePath(t *testing.T) string {
+	t.Helper()
+	dir, err := cacheDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return filepath.Join(dir, releasesCacheFile)
+}
+
+// writeReleasesCache stores a cache entry fetched age ago.
+func writeReleasesCache(t *testing.T, etag string, age time.Duration, tags ...string) {
+	t.Helper()
+	b, _ := json.Marshal(releaseCache{ETag: etag, Fetched: time.Now().Add(-age), Tags: tags})
+	path := releasesCachePath(t)
+	os.MkdirAll(filepath.Dir(path), 0o755)
+	if err := os.WriteFile(path, b, 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func readReleasesCache(t *testing.T) releaseCache {
+	t.Helper()
+	var c releaseCache
+	b, err := os.ReadFile(releasesCachePath(t))
+	if err != nil || json.Unmarshal(b, &c) != nil {
+		t.Fatalf("cache: %s, %v", b, err)
+	}
+	return c
+}
+
+func TestEditorAvailableCachesForAnHour(t *testing.T) {
+	isolateCache(t)
+	api, hits := releasesAPI(t, nil)
+	if out, _, err := runAvailable(t, api); err != nil || out != "4.7.2-stable\n" {
+		t.Fatalf("out = %q, err = %v", out, err)
+	}
+	if c := readReleasesCache(t); c.ETag != `"v1"` || strings.Join(c.Tags, " ") != "4.8-beta1 4.7.2-stable" {
+		t.Errorf("cache = %+v", c)
+	}
+	n := *hits
+	if out, _, err := runAvailable(t, api, "--pre"); err != nil || out != "4.8-beta1\n4.7.2-stable\n" || *hits != n {
+		t.Errorf("cached run: out = %q, err = %v, %d new requests", out, err, *hits-n)
+	}
+}
+
+func TestEditorAvailableRevalidatesWithETag(t *testing.T) {
+	isolateCache(t)
+	api, hits := releasesAPI(t, nil)
+	writeReleasesCache(t, `"v1"`, 2*time.Hour, "4.6-stable")
+	out, _, err := runAvailable(t, api)
+	if err != nil || out != "4.6-stable\n" || *hits != 1 {
+		t.Errorf("304: out = %q, err = %v, hits = %d", out, err, *hits)
+	}
+	if c := readReleasesCache(t); time.Since(c.Fetched) > time.Minute {
+		t.Errorf("fetched not renewed: %v", c.Fetched)
+	}
+
+	writeReleasesCache(t, `"old"`, 2*time.Hour, "4.6-stable")
+	if out, _, err := runAvailable(t, api); err != nil || out != "4.7.2-stable\n" {
+		t.Errorf("200: out = %q, err = %v", out, err)
+	}
+}
+
+func TestEditorAvailableRefresh(t *testing.T) {
+	isolateCache(t)
+	api, hits := releasesAPI(t, nil)
+	writeReleasesCache(t, `"v1"`, time.Minute, "4.6-stable")
+	if out, _, err := runAvailable(t, api, "--refresh"); err != nil || out != "4.6-stable\n" || *hits != 1 {
+		t.Errorf("304: out = %q, err = %v, hits = %d", out, err, *hits)
+	}
+	writeReleasesCache(t, `"old"`, time.Minute, "4.6-stable")
+	if out, _, err := runAvailable(t, api, "--refresh"); err != nil || out != "4.7.2-stable\n" {
+		t.Errorf("200: out = %q, err = %v", out, err)
+	}
+}
+
+func TestEditorAvailableFutureCacheIsStale(t *testing.T) {
+	isolateCache(t)
+	api, hits := releasesAPI(t, nil)
+	writeReleasesCache(t, `"old"`, -24*time.Hour, "4.6-stable")
+	if out, _, err := runAvailable(t, api); err != nil || out != "4.7.2-stable\n" || *hits == 0 {
+		t.Errorf("out = %q, err = %v, hits = %d", out, err, *hits)
+	}
+}
+
+func TestEditorAvailableUnusableCacheDir(t *testing.T) {
+	isolateCache(t)
+	api, _ := releasesAPI(t, nil)
+	dir, _ := cacheDir()
+	os.MkdirAll(filepath.Dir(dir), 0o755)
+	os.WriteFile(dir, nil, 0o644) // a file where the cache dir should be
+	if out, _, err := runAvailable(t, api); err != nil || out != "4.7.2-stable\n" {
+		t.Errorf("out = %q, err = %v", out, err)
+	}
+}
+
+func TestEditorAvailableStaleCacheOnError(t *testing.T) {
+	isolateCache(t)
+	status := http.StatusForbidden
+	api, _ := releasesAPI(t, &status)
+	writeReleasesCache(t, `"v1"`, 2*time.Hour, "4.6-stable")
+	out, errOut, err := runAvailable(t, api)
+	if err != nil || out != "4.6-stable\n" || !strings.Contains(errOut, "warning: using cached release list from") || !strings.Contains(errOut, "403") {
+		t.Errorf("out = %q, stderr = %q, err = %v", out, errOut, err)
+	}
+
+	os.Remove(releasesCachePath(t))
+	if _, _, err := runAvailable(t, api); err == nil || !strings.Contains(err.Error(), "403") {
+		t.Errorf("without cache: err = %v", err)
+	}
+	os.WriteFile(releasesCachePath(t), []byte("{}"), 0o644)
+	if _, _, err := runAvailable(t, api); err == nil || !strings.Contains(err.Error(), "403") {
+		t.Errorf("empty cache: err = %v", err)
+	}
+}
+
+func TestEditorAvailableIgnoresBrokenCache(t *testing.T) {
+	isolateCache(t)
+	api, _ := releasesAPI(t, nil)
+	path := releasesCachePath(t)
+	os.MkdirAll(filepath.Dir(path), 0o755)
+	for _, broken := range []string{"{", "{}"} {
+		os.WriteFile(path, []byte(broken), 0o644)
+		if out, _, err := runAvailable(t, api); err != nil || out != "4.7.2-stable\n" {
+			t.Errorf("%s: out = %q, err = %v", broken, out, err)
+		}
 	}
 }
 

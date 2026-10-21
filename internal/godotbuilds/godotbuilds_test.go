@@ -297,48 +297,57 @@ func fakeAPI(t *testing.T, gotAuth *string) *httptest.Server {
 			http.Error(w, "per_page", http.StatusBadRequest)
 			return
 		}
+		if r.URL.Query().Get("page") == "1" {
+			if r.Header.Get("If-None-Match") == `"v1"` {
+				w.WriteHeader(http.StatusNotModified)
+				return
+			}
+			w.Header().Set("ETag", `"v1"`)
+		}
 		w.Write([]byte(pages[r.URL.Query().Get("page")]))
 	}))
 	t.Cleanup(srv.Close)
 	return srv
 }
 
-func TestAvailable(t *testing.T) {
+func TestReleases(t *testing.T) {
 	var auth string
 	srv := fakeAPI(t, &auth)
 	c := Client{APIURL: srv.URL, HTTP: srv.Client()}
 
-	got, err := c.Available(context.Background(), false)
+	got, etag, err := c.Releases(context.Background(), "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := "4.7.2-stable 4.7-stable"; strings.Join(got, " ") != want {
-		t.Errorf("stable = %v, want %s", got, want)
+	if want := "4.8-beta1 4.7.2-stable 4.7-rc2 4.7-stable"; strings.Join(got, " ") != want {
+		t.Errorf("tags = %v, want %s", got, want)
+	}
+	if etag != `"v1"` {
+		t.Errorf("etag = %q", etag)
 	}
 	if auth != "" {
 		t.Errorf("Authorization = %q without token", auth)
 	}
 
-	got, err = c.Available(context.Background(), true)
-	if err != nil {
-		t.Fatal(err)
+	if _, _, err := c.Releases(context.Background(), `"v1"`); !errors.Is(err, ErrNotModified) {
+		t.Errorf("unchanged first page: err = %v, want ErrNotModified", err)
 	}
-	if want := "4.8-beta1 4.7.2-stable 4.7-rc2 4.7-stable"; strings.Join(got, " ") != want {
-		t.Errorf("pre = %v, want %s", got, want)
+	if got, _, err := c.Releases(context.Background(), `"old"`); err != nil || len(got) != 4 {
+		t.Errorf("changed first page: %v, %v", got, err)
 	}
 
 	c.Token = "tok"
-	if _, err := c.Available(context.Background(), false); err != nil || auth != "Bearer tok" {
+	if _, _, err := c.Releases(context.Background(), ""); err != nil || auth != "Bearer tok" {
 		t.Errorf("auth = %q, err = %v", auth, err)
 	}
 }
 
-func TestAvailableErrorStatus(t *testing.T) {
+func TestReleasesErrorStatus(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "limit", http.StatusForbidden)
 	}))
 	defer srv.Close()
-	_, err := Client{APIURL: srv.URL, HTTP: srv.Client()}.Available(context.Background(), false)
+	_, _, err := Client{APIURL: srv.URL, HTTP: srv.Client()}.Releases(context.Background(), "")
 	if err == nil || !strings.Contains(err.Error(), "403") || !strings.Contains(err.Error(), "GH_TOKEN") {
 		t.Errorf("err = %v", err)
 	}
