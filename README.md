@@ -8,6 +8,19 @@ into `addons/`, pinned and verified via `package-lock.godot`.
 
 # Installation
 
+Download the archive for your system from the
+[releases page](https://github.com/godot-services/gd/releases) (linux, macOS,
+windows on amd64 and arm64), unpack it and put `gd` on your `PATH`.
+
+```sh
+sha256sum -c checksums.txt --ignore-missing                                     # verify the download
+gh attestation verify gd_<version>_<os>_<arch>.tar.gz --repo godot-services/gd   # built by this repo's release workflow
+xattr -d com.apple.quarantine gd                                                 # macOS: the binary is not notarized
+gd --version
+```
+
+With a Go toolchain:
+
 ```sh
 go install github.com/godot-services/gd@latest
 ```

@@ -1,6 +1,6 @@
 # M4 Release Builds — Design
 
-Status: draft · Date: 2026-10-21 · Refs: gd#41 · Builds on: [ADRs](../../adr/README.md)
+Status: accepted · Date: 2026-10-21 · Refs: gd#41 · Builds on: [ADRs](../../adr/README.md)
 
 ## Goal
 

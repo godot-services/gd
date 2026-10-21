@@ -1,0 +1,38 @@
+version: 2
+
+project_name: gd
+
+builds:
+  - id: gd
+    main: .
+    binary: gd
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X github.com/godot-services/gd/cmd.buildVersion=v{{.Version}}
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+
+archives:
+  - name_template: "gd_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - README.md
+      - LICENSE
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+changelog:
+  use: github
+
+# Keep hand-written release notes; a bare tag gets a release with a generated changelog.
+release:
+  mode: keep-existing
+  replace_existing_artifacts: true

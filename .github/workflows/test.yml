@@ -23,3 +23,22 @@ jobs:
         run: go vet ./...
       - name: Test with Go
         run: go test ./... -cover -v
+
+  snapshot:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build release archives (snapshot)
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          distribution: goreleaser
+          version: v2.18.3
+          args: release --snapshot --clean
