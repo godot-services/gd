@@ -1,6 +1,6 @@
 # 0017. Editor management
 
-- Status: accepted
+- Status: amended by [0025](0025-release-list-cache.md)
 - Date: 2026-10-20
 - Refs: [gd#18](https://github.com/godot-services/gd/issues/18), [gd#43](https://github.com/godot-services/gd/issues/43), [gd#57](https://github.com/godot-services/gd/issues/57), [gd#58](https://github.com/godot-services/gd/issues/58); see [0018](0018-godot-version-spec.md)
 
