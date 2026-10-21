@@ -10,6 +10,8 @@ builds:
       - CGO_ENABLED=0
     flags:
       - -trimpath
+    # Reproducible archives: a re-run uploads the same sha256 the tap and bucket already point to.
+    mod_timestamp: "{{ .CommitTimestamp }}"
     ldflags:
       - -s -w -X github.com/godot-services/gd/cmd.buildVersion=v{{.Version}}
     goos: [linux, darwin, windows]
@@ -21,9 +23,15 @@ archives:
     format_overrides:
       - goos: windows
         formats: [zip]
+    builds_info:
+      mtime: "{{ .CommitDate }}"
     files:
-      - README.md
-      - LICENSE
+      - src: README.md
+        info:
+          mtime: "{{ .CommitDate }}"
+      - src: LICENSE
+        info:
+          mtime: "{{ .CommitDate }}"
 
 checksum:
   name_template: checksums.txt
@@ -51,12 +59,13 @@ homebrew_casks:
       name: homebrew-tap
       token: "{{ .Env.TAP_GITHUB_TOKEN }}"
     # The binary is not notarized (ADR 0021); without this Gatekeeper calls it damaged.
-    hooks:
-      post:
-        install: |
-          if OS.mac?
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/gd"]
-          end
+    # postflight_steps instead of hooks: Homebrew 7 deprecates the postflight block GoReleaser renders.
+    custom_block: |
+      postflight_steps do
+        on_macos do
+          run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "gd"], chdir: ".", writable_paths: ["gd"]
+        end
+      end
 
 scoops:
   - name: gd

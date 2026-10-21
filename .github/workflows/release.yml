@@ -31,6 +31,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
       - name: Attest archives
+        # Also when only the tap/bucket push failed: the release is public by then.
+        if: ${{ !cancelled() }}
         uses: actions/attest-build-provenance@v4
         with:
           subject-path: |

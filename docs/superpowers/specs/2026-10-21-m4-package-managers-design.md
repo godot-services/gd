@@ -39,7 +39,8 @@ follow-up issue.
 | Who maintains | GoReleaser writes the cask/manifest on every stable release; nobody edits them by hand | 0023 |
 | Credentials | fine-grained PAT as `TAP_GITHUB_TOKEN`, scoped to the two repos | 0023 |
 | Prereleases | not published (`skip_upload: auto`) | 0023 |
-| macOS quarantine | cask post-install hook runs `xattr -dr com.apple.quarantine` on the binary | 0023 |
+| macOS quarantine | `postflight_steps` `run` step (via `custom_block`) runs `xattr -dr com.apple.quarantine` on the binary; not GoReleaser's `hooks`, whose `postflight` block Homebrew 7 deprecates (changed after the final review) | 0023 |
+| Re-runs | reproducible archives (`mod_timestamp`, archive `mtime`); attestation runs even if the tap push failed; only the latest stable tag is re-run | 0023 |
 
 Rejected: a GitHub App instead of the PAT (more setup for two repos; can be
 switched later without changing the config shape); winget now (PRs to
@@ -62,12 +63,12 @@ homebrew_casks:
       owner: godot-services
       name: homebrew-tap
       token: "{{ .Env.TAP_GITHUB_TOKEN }}"
-    hooks:
-      post:
-        install: |
-          if OS.mac?
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/gd"]
-          end
+    custom_block: |
+      postflight_steps do
+        on_macos do
+          run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "gd"], chdir: ".", writable_paths: ["gd"]
+        end
+      end
 
 scoops:
   - name: gd

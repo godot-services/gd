@@ -24,8 +24,15 @@ Homebrew quarantines cask downloads on macOS.
   prerelease on GitHub (`release.prerelease: auto`).
 - Credentials: a fine-grained PAT scoped to the two repositories with
   "Contents: read and write", stored as the `gd` secret `TAP_GITHUB_TOKEN`.
-- The cask's post-install hook removes the quarantine attribute from the
-  binary on macOS.
+- The cask removes the quarantine attribute from the binary on macOS with a
+  `postflight_steps` `run` step, emitted through GoReleaser's `custom_block`.
+  GoReleaser's own `hooks.post.install` renders a `postflight` block, which
+  Homebrew 7 deprecates at runtime (a warning for every user, an error with
+  `HOMEBREW_DEVELOPER=1`, later an error for everyone).
+- Archives are reproducible (`mod_timestamp`, archive `mtime` from the commit),
+  so a re-run uploads the same SHA-256 the tap and bucket already contain.
+- Only the latest stable tag is ever re-run: a re-run of an older tag would
+  rewrite the cask and manifest to that version and downgrade users.
 
 Rejected for now: winget (PRs to `microsoft/winget-pkgs` need a fork and a
 manual first review), deb/rpm, AUR and Nix (all in gd#74); a GitHub App instead
@@ -35,7 +42,10 @@ changing the config shape).
 ## Consequences
 
 A stable tag updates Homebrew and Scoop with no manual step. The PAT expires
-and belongs to a person: when it lapses, the release itself still publishes
-but the tap/bucket push fails until the secret is renewed and the job re-run.
-The generated cask uses `postflight`, which Homebrew's own style check
-(`brew style`) flags for homebrew-core; third-party taps install it fine.
+and belongs to a person: when it lapses, the release and its attestation still
+publish but the tap/bucket push fails until the secret is renewed and the job
+re-run. `postflight_steps` needs Homebrew 7; older Homebrew cannot load the
+cask (`brew update` fixes it). `brew style` reports stanza-order offenses in the
+generated cask; they only matter for homebrew-core. The cask shares its name
+with homebrew-core's `gd` formula (libgd), so `brew install` needs the full
+name `godot-services/tap/gd`.
