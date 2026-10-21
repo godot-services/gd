@@ -143,7 +143,27 @@ func TestGodotOutsideProjectUsesDefault(t *testing.T) {
 	if _, err := runEditor(t, "", "godot", "--", "x"); !errors.As(err, &ee) || ee.code != 4 {
 		t.Errorf("err = %v", err)
 	}
-	if _, err := runEditor(t, "", "open"); !errors.Is(err, godot.ErrNoGodotProject) {
-		t.Errorf("open err = %v", err)
+	if _, err := runEditor(t, "", "start"); !errors.Is(err, godot.ErrNoGodotProject) {
+		t.Errorf("start err = %v", err)
+	}
+}
+
+func TestOpenOutsideProjectOpensProjectManager(t *testing.T) {
+	isolateCache(t)
+	log := setupFakeEditor(t)
+	chdir(t, t.TempDir())
+	if _, err := runEditor(t, "", "open"); err != nil {
+		t.Fatal(err)
+	}
+	if got := readLog(t, log); !strings.HasSuffix(got, "\n--project-manager\n") {
+		t.Errorf("log = %q", got)
+	}
+}
+
+func TestOpenOutsideProjectWithoutDefaultFails(t *testing.T) {
+	isolateCache(t)
+	chdir(t, t.TempDir())
+	if _, err := runEditor(t, "", "open"); err == nil || !strings.Contains(err.Error(), "gd editor default") {
+		t.Errorf("err = %v", err)
 	}
 }

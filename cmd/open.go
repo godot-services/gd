@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/godot-services/gd/internal/editor"
@@ -55,6 +56,19 @@ func resolveProjectEditor(cmd *cobra.Command) (dir string, e editor.Editor, err 
 	return dir, e, nil
 }
 
+// resolveEditor is resolveProjectEditor, but outside a project it resolves the
+// default editor and returns an empty dir.
+func resolveEditor(cmd *cobra.Command) (dir string, e editor.Editor, err error) {
+	dir, e, err = resolveProjectEditor(cmd)
+	if errors.Is(err, godot.ErrNoGodotProject) {
+		var reg *editor.Registry
+		if reg, _, err = loadRegistry(); err == nil {
+			e, err = reg.Resolve(editor.Requirement{})
+		}
+	}
+	return dir, e, err
+}
+
 func runEditorProcess(cmd *cobra.Command, path string, args []string) error {
 	code, err := editor.Run(cmd.Context(), path, args, cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr())
 	if err != nil {
@@ -70,14 +84,17 @@ func newOpenCmd(use string) *cobra.Command {
 	var detach bool
 	c := &cobra.Command{
 		Use:   use,
-		Short: "Open the project in its Godot editor",
+		Short: "Open the project in its Godot editor (outside a project: the project manager)",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			dir, e, err := resolveProjectEditor(cmd)
+			dir, e, err := resolveEditor(cmd)
 			if err != nil {
 				return err
 			}
 			a := []string{"-e", "--path", dir}
+			if dir == "" {
+				a = []string{"--project-manager"}
+			}
 			if detach {
 				return editor.StartDetached(e.Path, a)
 			}

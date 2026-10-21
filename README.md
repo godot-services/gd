@@ -77,12 +77,14 @@ gd editor default <name>                                  # global default edito
 gd editor use <name>                                      # pick an editor on this machine (package.local.godot, not committed)
 gd editor use --clear                                     # drop that pick again
 gd editor uninstall <name>
+gd editor shim install                                    # a godot command for your PATH that runs gd godot
+gd editor shim uninstall
 ```
 
 ## Run
 
 ```sh
-gd open [--detach]                                        # open the project in the editor (long form: gd editor open)
+gd open [--detach]                                        # open the project in the editor (long form: gd editor open); outside a project: the project manager
 gd start [scene] [--detach]                               # run the project (or a scene)
 gd godot -- --version                                     # run the project's editor with any arguments
 ```
@@ -95,9 +97,18 @@ gd templates list
 gd templates uninstall <version>
 ```
 
+`gd editor shim install` writes `godot` (Windows: `godot.cmd`) into `<gd data>/bin`
+and prints how to add that folder to your PATH; `gd` never changes PATH itself.
+`<gd data>` is `~/.local/share/gd` (Linux, or `$XDG_DATA_HOME/gd`),
+`~/Library/Application Support/gd` (macOS) or `%LOCALAPPDATA%\gd` (Windows).
+Then `godot` starts the project's editor inside a project and the default editor
+everywhere else.
+
 See [ADR 0017](/docs/adr/0017-editor-management.md),
-[0018](/docs/adr/0018-godot-version-spec.md) and
-[0019](/docs/adr/0019-export-templates.md).
+[0018](/docs/adr/0018-godot-version-spec.md),
+[0019](/docs/adr/0019-export-templates.md),
+[0025](/docs/adr/0025-release-list-cache.md) and
+[0026](/docs/adr/0026-godot-shim.md).
 
 ## Project settings
 
@@ -144,6 +155,7 @@ See [ADR 0024](/docs/adr/0024-project-godot-reader-writer.md).
 | editor install   | install godot editor for specified version     | done  |
 | editor uninstall | uninstall godot editor for specified version   | done  |
 | editor default   | set default godot editor for specified version | done  |
+| editor shim      | `godot` command for your PATH that runs `gd godot` | done  |
 
 # shortcut commands
 

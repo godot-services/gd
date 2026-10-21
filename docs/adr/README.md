@@ -23,7 +23,7 @@ supersedes the old one.
 | [0014](0014-zip-cache.md)                     | Cache downloaded zips by SHA-256       | accepted |
 | [0015](0015-comfort-commands.md)              | Comfort commands: search, --no-dev, outdated, update | amended by 0024 |
 | [0016](0016-cache-commands.md)                | Cache commands                         | amended by 0025 |
-| [0017](0017-editor-management.md)            | Editor management: godot-builds, managed and linked editors | amended by 0025 |
+| [0017](0017-editor-management.md)            | Editor management: godot-builds, managed and linked editors | amended by 0025, 0026 |
 | [0018](0018-godot-version-spec.md)            | Godot version spec and local editor choice | accepted |
 | [0019](0019-export-templates.md)               | Export templates: source, verification, target dirs | accepted |
 | [0020](0020-release-builds-with-goreleaser.md)  | Release builds with GoReleaser         | accepted |
@@ -32,5 +32,6 @@ supersedes the old one.
 | [0023](0023-package-managers.md)               | Package managers: Homebrew tap and Scoop bucket | accepted |
 | [0024](0024-project-godot-reader-writer.md)   | Read and write project.godot with an own minimal parser | accepted |
 | [0025](0025-release-list-cache.md)             | Cache the godot-builds release list    | accepted |
+| [0026](0026-godot-shim.md)                     | `godot` shim and the editor outside a project | accepted |
 
 Template: copy [template.md](template.md).
