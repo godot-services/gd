@@ -99,6 +99,18 @@ See [ADR 0017](/docs/adr/0017-editor-management.md),
 [0018](/docs/adr/0018-godot-version-spec.md) and
 [0019](/docs/adr/0019-export-templates.md).
 
+## Project settings
+
+```sh
+gd config get <path>                                      # print a setting (application/config/name)
+gd config set <path> <value>                              # change or add a setting
+gd config unset <path>                                    # remove a setting
+gd config list [prefix]                                   # list the settings in project.godot
+```
+
+Only the changed entry is written, the rest of `project.godot` stays byte for byte as it was.
+See [ADR 0024](/docs/adr/0024-project-godot-reader-writer.md).
+
 > [!NOTE]
 > Following roadmaps are currently `wip`
 
@@ -143,6 +155,7 @@ See [ADR 0017](/docs/adr/0017-editor-management.md),
 | outdated | show library assets with a newer version            | done  |
 | update   | update assets to their latest version               | done  |
 | cache    | inspect or clear the download cache                 | done  |
+| config   | read and change project.godot settings              | done  |
 | open      | open the project in its editor                    | done  |
 | start     | run the project or a scene                        | done  |
 | godot     | run the project's editor with arguments           | done  |

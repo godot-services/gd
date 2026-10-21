@@ -79,3 +79,10 @@ gets the same files. `paths` lists the folders `gd` installed under `addons/`;
 Commit both files.
 
 Downloaded zips are cached by SHA-256 in `<user cache dir>/gd/` (see [ADR 0014](adr/0014-zip-cache.md)); `gd cache info` shows it and `gd cache clean` clears it.
+
+# `project.godot`
+
+The Godot project file. `gd` reads `config/features` (the Godot version) and
+`run/main_scene` from it. `gd config` reads and changes any setting and writes only the
+affected entry; the rest of the file stays byte for byte as it was. See
+[ADR 0024](/docs/adr/0024-project-godot-reader-writer.md).
