@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"errors"
 	"os"
 	"path/filepath"
@@ -115,21 +116,12 @@ func TestConfigUnset(t *testing.T) {
 	if err != nil || out != "unset a/x\n" {
 		t.Fatalf("out=%q err=%v", out, err)
 	}
-	if got := readProject(t, dir); got == "" || containsEntry(got) {
-		t.Fatalf("entry still there: %q", got)
+	if got := readProject(t, dir); got != "[a]\n\n" {
+		t.Fatalf("file=%q", got)
 	}
 	if _, err := runOut(t, lib, "config", "unset", "a/x"); !errors.Is(err, errSettingNotSet) {
 		t.Fatalf("err=%v", err)
 	}
-}
-
-func containsEntry(s string) bool {
-	for i := 0; i+3 <= len(s); i++ {
-		if s[i:i+3] == "x=1" {
-			return true
-		}
-	}
-	return false
 }
 
 func TestConfigList(t *testing.T) {
@@ -155,5 +147,22 @@ func TestConfigNoProject(t *testing.T) {
 	_, err := runOut(t, newFakeLibrary(t), "config", "list")
 	if !errors.Is(err, godot.ErrNoGodotProject) {
 		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestConfigDataGoesToStdout(t *testing.T) {
+	writeProject(t, "[a]\n\nx=\"v\"\n")
+	for _, args := range [][]string{{"config", "get", "a/x"}, {"config", "list"}} {
+		var out, errBuf bytes.Buffer
+		root := newRootCmd()
+		root.SetArgs(append([]string{"--library-url", "http://unused"}, args...))
+		root.SetOut(&out)
+		root.SetErr(&errBuf)
+		if err := root.Execute(); err != nil {
+			t.Fatal(err)
+		}
+		if out.Len() == 0 || errBuf.Len() != 0 {
+			t.Errorf("%v: out=%q err=%q", args, out.String(), errBuf.String())
+		}
 	}
 }

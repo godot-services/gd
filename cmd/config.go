@@ -19,7 +19,7 @@ var (
 
 // inferValue turns a command line argument into raw project.godot value text.
 func inferValue(current string, hasCurrent bool, arg string) string {
-	if _, isString := godot.DecodeString(current); hasCurrent && isString {
+	if hasCurrent && isDecodableString(current) {
 		if strings.HasPrefix(arg, `"`) {
 			return arg
 		}
@@ -43,6 +43,12 @@ func inferValue(current string, hasCurrent bool, arg string) string {
 	}
 
 	return godot.EncodeString(arg)
+}
+
+func isDecodableString(raw string) bool {
+	_, ok := godot.DecodeString(raw)
+
+	return ok
 }
 
 // loadSettings reads project.godot from the current project.
@@ -77,7 +83,7 @@ func newConfigCmd() *cobra.Command {
 					raw = str
 				}
 
-				cmd.Println(raw)
+				fmt.Fprintln(cmd.OutOrStdout(), raw)
 
 				return nil
 			},
@@ -136,10 +142,14 @@ func newConfigCmd() *cobra.Command {
 					return err
 				}
 
-				prefix := strings.Join(args, "")
+				prefix := ""
+				if len(args) > 0 {
+					prefix = args[0]
+				}
+
 				for _, e := range s.List() {
 					if strings.HasPrefix(e.Path, prefix) {
-						cmd.Printf("%s=%s\n", e.Path, e.Raw)
+						fmt.Fprintf(cmd.OutOrStdout(), "%s=%s\n", e.Path, e.Raw)
 					}
 				}
 
