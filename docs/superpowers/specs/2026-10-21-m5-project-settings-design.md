@@ -137,8 +137,8 @@ can migrate it later.
 
 ## Documentation
 
-- ADR 0025 "Read and write project.godot with an own minimal parser" (number reserved
-  against parallel M4/M7 ADRs; renumbered at PR time if needed). It also lifts ADR
+- ADR 0024 "Read and write project.godot with an own minimal parser" (next after M4's 0020–0023;
+  renumbered at PR time if main moved on). It also lifts ADR
   0015's "only this line is read" restriction.
 - README: "Project settings" section; `docs/configuration-files.md`: short `project.godot`
   section (what `gd` reads and writes).

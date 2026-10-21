@@ -253,8 +253,8 @@ Run in a temp copy of `full.godot` as `project.godot`: `go run . config set disp
 ### Task 5: ADR and documentation
 
 **Files:**
-- Create: `docs/adr/0025-project-godot-reader-writer.md` (from `docs/adr/template.md`; next free number at commit time, see `side-session-notes/.../m5-adr-numbers.md`; refs gd#46, spec, ADR 0015)
-- Modify: `docs/adr/README.md` (row 0025; mark 0015 as "amended by 0025")
+- Create: `docs/adr/0024-project-godot-reader-writer.md` (from `docs/adr/template.md`; next free number at commit time, see `side-session-notes/.../m5-adr-numbers.md`; refs gd#46, spec, ADR 0015)
+- Modify: `docs/adr/README.md` (row 0024; mark 0015 as "amended by 0024")
 - Modify: `README.md` (section "Project settings" after "Export templates" with the four commands; row `config` in "shortcut commands")
 - Modify: `docs/configuration-files.md` (section `project.godot`: what `gd` reads — config/features, run/main_scene — and that `gd config` writes only the changed entry)
 
