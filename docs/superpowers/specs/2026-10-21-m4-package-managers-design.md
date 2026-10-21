@@ -1,6 +1,6 @@
 # M4 Package Managers — Design
 
-Status: draft · Date: 2026-10-21 · Refs: gd#42 · Builds on: [M4 release builds](2026-10-21-m4-release-builds-design.md), [ADRs](../../adr/README.md)
+Status: accepted · Date: 2026-10-21 · Refs: gd#42 · Builds on: [M4 release builds](2026-10-21-m4-release-builds-design.md), [ADRs](../../adr/README.md)
 
 ## Goal
 
@@ -110,8 +110,8 @@ local clones `/Users/naxmefy/work/godot-services/homebrew-tap` and
   number when committing), index in `docs/adr/README.md`.
 - README "Installation": Homebrew and Scoop commands first, then the archive
   download and `go install` from gd#41.
-- Issue gd#42: acceptance criteria changed to Homebrew + Scoop; a new issue in
-  milestone M4 (or later) collects deb/rpm, winget, AUR and Nix.
+- Issue gd#42: acceptance criteria changed to Homebrew + Scoop; gd#74 in
+  milestone M4 collects deb/rpm, winget, AUR and Nix.
 
 ## Error handling
 
