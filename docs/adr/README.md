@@ -26,5 +26,9 @@ supersedes the old one.
 | [0017](0017-editor-management.md)            | Editor management: godot-builds, managed and linked editors | accepted |
 | [0018](0018-godot-version-spec.md)            | Godot version spec and local editor choice | accepted |
 | [0019](0019-export-templates.md)               | Export templates: source, verification, target dirs | accepted |
+| [0020](0020-release-builds-with-goreleaser.md)  | Release builds with GoReleaser         | accepted |
+| [0021](0021-build-attestation-instead-of-signing.md) | Build attestation instead of code signing | accepted |
+| [0022](0022-version-string.md)                 | Version string in the binary           | accepted |
+| [0023](0023-package-managers.md)               | Package managers: Homebrew tap and Scoop bucket | accepted |
 
 Template: copy [template.md](template.md).

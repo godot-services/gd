@@ -1,0 +1,80 @@
+version: 2
+
+project_name: gd
+
+builds:
+  - id: gd
+    main: .
+    binary: gd
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    # Reproducible archives: a re-run uploads the same sha256 the tap and bucket already point to.
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    ldflags:
+      - -s -w -X github.com/godot-services/gd/cmd.buildVersion=v{{.Version}}
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+
+archives:
+  - name_template: "gd_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    builds_info:
+      mtime: "{{ .CommitDate }}"
+    files:
+      - src: README.md
+        info:
+          mtime: "{{ .CommitDate }}"
+      - src: LICENSE
+        info:
+          mtime: "{{ .CommitDate }}"
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+changelog:
+  use: github
+
+# A tag push creates the release; title and notes are edited afterwards (ADR 0020).
+# keep-existing keeps edited notes when the job is re-run.
+release:
+  mode: keep-existing
+  replace_existing_artifacts: true
+  prerelease: auto
+
+homebrew_casks:
+  - name: gd
+    binaries: [gd]
+    homepage: https://github.com/godot-services/gd
+    description: Package manager for Godot projects
+    license: MIT
+    skip_upload: auto
+    repository:
+      owner: godot-services
+      name: homebrew-tap
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
+    # The binary is not notarized (ADR 0021); without this Gatekeeper calls it damaged.
+    # postflight_steps instead of hooks: Homebrew 7 deprecates the postflight block GoReleaser renders.
+    custom_block: |
+      postflight_steps do
+        on_macos do
+          run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "gd"], chdir: ".", writable_paths: ["gd"]
+        end
+      end
+
+scoops:
+  - name: gd
+    homepage: https://github.com/godot-services/gd
+    description: Package manager for Godot projects
+    license: MIT
+    skip_upload: auto
+    directory: bucket
+    repository:
+      owner: godot-services
+      name: scoop-bucket
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
