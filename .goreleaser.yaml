@@ -37,3 +37,35 @@ changelog:
 release:
   mode: keep-existing
   replace_existing_artifacts: true
+  prerelease: auto
+
+homebrew_casks:
+  - name: gd
+    binaries: [gd]
+    homepage: https://github.com/godot-services/gd
+    description: Package manager for Godot projects
+    license: MIT
+    skip_upload: auto
+    repository:
+      owner: godot-services
+      name: homebrew-tap
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
+    # The binary is not notarized (ADR 0021); without this Gatekeeper calls it damaged.
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/gd"]
+          end
+
+scoops:
+  - name: gd
+    homepage: https://github.com/godot-services/gd
+    description: Package manager for Godot projects
+    license: MIT
+    skip_upload: auto
+    directory: bucket
+    repository:
+      owner: godot-services
+      name: scoop-bucket
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
