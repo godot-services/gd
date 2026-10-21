@@ -113,9 +113,11 @@ Runs in the folder with `project.godot` (same lookup as other commands).
 ### Type inference for `set`
 
 1. If the current value is a string, the new value is written as a string, unless the
-   new value itself starts with `"` (then it is taken raw).
+   new value itself is one complete `"..."` literal (then it is taken raw).
 2. Otherwise these are taken raw: `true`, `false`, `null`, numbers (`-12`, `1.5`, `1e3`),
-   and literals starting with `"`, `&"`, `^"`, `[`, `{` or `Name(`.
+   and one complete literal starting with `"`, `&"`, `^"`, `[`, `{` or `Name(`: the
+   string or bracket that opens it closes exactly at the last character
+   (`[WIP] my game`, `"q" extra` and `[1] [2]` are not, so they fall to rule 3).
 3. Anything else becomes an escaped, quoted string.
 4. A raw value that is not balanced (`[1, 2`) is rejected; the file stays unchanged.
 

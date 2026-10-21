@@ -33,6 +33,15 @@ func TestInferValue(t *testing.T) {
 		{"5", true, "abc", `"abc"`},
 		{"", false, `say "hi"`, `"say \"hi\""`},
 		{"", false, "1.2.3", `"1.2.3"`},
+		{"", false, "[WIP] my game", `"[WIP] my game"`},
+		{"", false, `"q" extra`, `"\"q\" extra"`},
+		{"", false, "[1] [2]", `"[1] [2]"`},
+		{"", false, "Vector2i(1, 2) x", `"Vector2i(1, 2) x"`},
+		{"", false, `&"a"b`, `"&\"a\"b"`},
+		{"", false, `{"a": 1}`, `{"a": 1}`},
+		{"", false, `["]", 1]`, `["]", 1]`},
+		{"", false, "[1, 2", "[1, 2"},
+		{`"Old"`, true, `"q" extra`, `"\"q\" extra"`},
 	}
 	for _, tt := range tests {
 		if got := inferValue(tt.current, tt.has, tt.arg); got != tt.want {

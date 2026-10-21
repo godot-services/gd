@@ -31,8 +31,10 @@ the layout of everything we did not mean to touch, and needs an installed editor
   an empty section stays.
 - The file is written atomically (temp file in the same dir, rename), keeping its mode.
 - Type inference for `gd config set`: (1) if the current value is a string, the new
-  value is a string, unless it starts with `"`; (2) otherwise `true`, `false`, `null`,
-  numbers and literals starting with `"`, `&"`, `^"`, `[`, `{` or `Name(` are raw;
+  value is a string, unless it is one complete `"..."` literal; (2) otherwise `true`,
+  `false`, `null`, numbers and one complete literal starting with `"`, `&"`, `^"`, `[`,
+  `{` or `Name(` (its opening string or bracket closes at the last character, so
+  `[WIP] my game` is not one) are raw;
   (3) anything else is an escaped, quoted string; (4) an unbalanced raw value is
   rejected and the file stays unchanged.
 - Only strings and `PackedStringArray` are decoded. Everything else stays raw text.

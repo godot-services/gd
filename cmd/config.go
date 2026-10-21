@@ -20,7 +20,7 @@ var (
 // inferValue turns a command line argument into raw project.godot value text.
 func inferValue(current string, hasCurrent bool, arg string) string {
 	if hasCurrent && isDecodableString(current) {
-		if strings.HasPrefix(arg, `"`) {
+		if strings.HasPrefix(arg, `"`) && oneTerm(arg, 0) {
 			return arg
 		}
 
@@ -32,17 +32,57 @@ func inferValue(current string, hasCurrent bool, arg string) string {
 		return arg
 	}
 
-	if numberRe.MatchString(arg) || constructorRe.MatchString(arg) {
+	if numberRe.MatchString(arg) {
 		return arg
+	}
+
+	if m := constructorRe.FindStringIndex(arg); m != nil {
+		if oneTerm(arg, m[1]-1) {
+			return arg
+		}
+
+		return godot.EncodeString(arg)
 	}
 
 	for _, p := range []string{`"`, `&"`, `^"`, "[", "{"} {
 		if strings.HasPrefix(arg, p) {
-			return arg
+			if oneTerm(arg, len(p)-1) {
+				return arg
+			}
+
+			break
 		}
 	}
 
 	return godot.EncodeString(arg)
+}
+
+// oneTerm reports whether the string or bracket opening at arg[open] closes exactly at
+// the last character. A term that never closes counts too, so Set rejects it as unbalanced.
+func oneTerm(arg string, open int) bool {
+	depth, inString := 0, false
+
+	for i := open; i < len(arg); i++ {
+		switch c := arg[i]; {
+		case inString && c == '\\':
+			i++
+			continue
+		case c == '"':
+			inString = !inString
+		case inString:
+			continue
+		case c == '(' || c == '[' || c == '{':
+			depth++
+		case c == ')' || c == ']' || c == '}':
+			depth--
+		}
+
+		if !inString && depth <= 0 {
+			return i == len(arg)-1
+		}
+	}
+
+	return true
 }
 
 func isDecodableString(raw string) bool {
