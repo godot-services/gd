@@ -46,7 +46,7 @@ Asset names may only contain `a-z`, `0-9` and `_`.
 `[editor]` pins the Godot editor of the project: `version` (`4.7.2`, `4.8-beta1`; a
 plain number means the `-stable` release) and `dotnet` (default `false`). `gd search`
 uses it as the Godot version, and `gd install` / `gd search` warn when its
-major.minor differs from `config/features` in `project.godot`.
+major.minor differs from `application/config/features` in `project.godot`.
 
 # `package.local.godot`
 
@@ -82,7 +82,7 @@ Downloaded zips are cached by SHA-256 in `<user cache dir>/gd/` (see [ADR 0014](
 
 # `project.godot`
 
-The Godot project file. `gd` reads `config/features` (the Godot version) and
-`run/main_scene` from it. `gd config` reads and changes any setting and writes only the
+The Godot project file. `gd` reads `application/config/features` (the Godot version)
+and `application/run/main_scene` from it. `gd config` reads and changes any setting and writes only the
 affected entry; the rest of the file stays byte for byte as it was. See
 [ADR 0024](/docs/adr/0024-project-godot-reader-writer.md).

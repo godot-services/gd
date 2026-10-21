@@ -68,14 +68,16 @@ byte identical.
 
 ### Writing
 
-- `set` on an existing entry replaces its value in place.
+- `set` on an existing entry replaces its value in place. When a key appears more than
+  once, `get`, `set` and `unset` act on the last entry, the one Godot's loader keeps.
 - A new key is appended to the end of its section (after the last entry, before the
   blank line that separates sections).
 - A new section is inserted in alphabetical order among the existing ones, preceded by a
   blank line, like Godot would place it.
 - New lines use the file's line ending (CRLF when the first line ends with CRLF, else LF).
 - `unset` removes the entry; a section that becomes empty stays.
-- The file is written atomically (temp file in the same dir + rename), keeping its mode.
+- The file is written atomically (temp file in the same dir, synced, then renamed),
+  keeping its mode. Settings parsed from bytes (not loaded from a dir) cannot be saved.
 - Nothing is written when loading failed or a value is rejected.
 
 ### API (`internal/godot/settings.go`)

@@ -265,9 +265,35 @@ func TestSetInvalidPath(t *testing.T) {
 	}
 }
 
-func TestSetDuplicateKeyFirstWins(t *testing.T) {
-	if got := setOn(t, []byte("[a]\nx=1\nx=2\n"), "a/x", "3"); got != "[a]\nx=3\nx=2\n" {
-		t.Errorf("got %q", got)
+func TestDuplicateKeyLastWins(t *testing.T) {
+	const src = "[a]\nx=1\nx=2\n"
+	if v, _ := parse(t, src).Get("a/x"); v != "2" {
+		t.Errorf("get = %q", v)
+	}
+	if got := setOn(t, []byte(src), "a/x", "3"); got != "[a]\nx=1\nx=3\n" {
+		t.Errorf("set: got %q", got)
+	}
+	s := parse(t, src)
+	if !s.Unset("a/x") || string(s.Bytes()) != "[a]\nx=1\n" {
+		t.Errorf("unset: got %q", s.Bytes())
+	}
+}
+
+func TestSaveWithoutDir(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, ProjectFileName), []byte("x=1\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	wd, _ := os.Getwd()
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(wd) })
+	if err := parse(t, "x=2\n").Save(); err == nil {
+		t.Error("saved settings without a dir")
+	}
+	if got, _ := os.ReadFile(filepath.Join(dir, ProjectFileName)); string(got) != "x=1\n" {
+		t.Errorf("file = %q", got)
 	}
 }
 

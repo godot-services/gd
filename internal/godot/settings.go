@@ -168,10 +168,8 @@ func (s *ProjectSettings) Bytes() []byte {
 }
 
 func (s *ProjectSettings) Get(path string) (string, bool) {
-	for _, e := range s.List() {
-		if e.Path == path {
-			return e.Raw, true
-		}
+	if i := s.find(path); i >= 0 {
+		return s.blocks[i].raw, true
 	}
 
 	return "", false
@@ -198,9 +196,9 @@ func (s *ProjectSettings) List() []Setting {
 	return out
 }
 
-// find returns the index of the first entry block for path.
+// find returns the index of the last entry block for path; Godot's loader keeps the last.
 func (s *ProjectSettings) find(path string) int {
-	section := ""
+	section, found := "", -1
 
 	for i, b := range s.blocks {
 		switch b.kind {
@@ -213,12 +211,12 @@ func (s *ProjectSettings) find(path string) int {
 			}
 
 			if p == path {
-				return i
+				found = i
 			}
 		}
 	}
 
-	return -1
+	return found
 }
 
 // insert puts blocks at index i, first giving a previous line without ending one.
@@ -349,6 +347,10 @@ func (s *ProjectSettings) Unset(path string) bool {
 
 // Save writes project.godot atomically, keeping the file mode.
 func (s *ProjectSettings) Save() (err error) {
+	if s.dir == "" {
+		return errors.New("project settings were not loaded from a directory")
+	}
+
 	file := filepath.Join(s.dir, ProjectFileName)
 
 	fi, err := os.Stat(file)
@@ -373,6 +375,10 @@ func (s *ProjectSettings) Save() (err error) {
 	}
 
 	if err = tmp.Chmod(fi.Mode().Perm()); err != nil {
+		return err
+	}
+
+	if err = tmp.Sync(); err != nil {
 		return err
 	}
 

@@ -29,7 +29,9 @@ the layout of everything we did not mean to touch, and needs an installed editor
   a new section is inserted alphabetically with a blank line before it. New lines use
   the file's line ending (CRLF if the first line has it). `unset` removes the entry;
   an empty section stays.
-- The file is written atomically (temp file in the same dir, rename), keeping its mode.
+- `get`, `set` and `unset` act on the last entry of a duplicated key, as Godot does.
+- The file is written atomically (temp file in the same dir, synced, then renamed),
+  keeping its mode.
 - Type inference for `gd config set`: (1) if the current value is a string, the new
   value is a string, unless it is one complete `"..."` literal; (2) otherwise `true`,
   `false`, `null`, numbers and one complete literal starting with `"`, `&"`, `^"`, `[`,
@@ -46,3 +48,6 @@ the layout of everything we did not mean to touch, and needs an installed editor
 Edits are byte-preserving and need no editor. Values outside the inference rules must
 be written in Godot syntax. Setting names are not validated, and defaults are unknown
 to `gd`: a setting at its default is not in the file, so `get` reports it as not set.
+A `project.godot` the parser cannot read (an unterminated value) now makes `gd start`,
+`gd open` and `gd search` fail with a parse error; the regular expressions before
+ignored such a file and read what they could.
