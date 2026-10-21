@@ -1,6 +1,6 @@
 # M5 Chunk A: Project Settings — Design
 
-Status: proposed · Date: 2026-10-21 · Refs: gd#46 · Builds on: [ADRs](../../adr/README.md) (0015)
+Status: accepted · Date: 2026-10-21 · Refs: gd#46 · Builds on: [ADRs](../../adr/README.md) (0015)
 
 ## Goal
 
