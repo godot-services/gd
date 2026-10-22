@@ -25,6 +25,8 @@ Assets are declared in package.godot and pinned in package-lock.godot.`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
+	// cmd.Print* defaults to stderr; normal output belongs on stdout (ADR 0025)
+	rootCmd.SetOut(os.Stdout)
 
 	rootCmd.PersistentFlags().StringVar(&opts.libraryURL, "library-url", source.DefaultLibraryURL, "asset library API base URL")
 	rootCmd.PersistentFlags().MarkHidden("library-url")
