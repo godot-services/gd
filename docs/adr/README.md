@@ -30,5 +30,6 @@ supersedes the old one.
 | [0021](0021-build-attestation-instead-of-signing.md) | Build attestation instead of code signing | accepted |
 | [0022](0022-version-string.md)                 | Version string in the binary           | accepted |
 | [0023](0023-package-managers.md)               | Package managers: Homebrew tap and Scoop bucket | accepted |
+| [0025](0025-stdout-for-normal-output.md)       | Normal output on stdout                | accepted |
 
 Template: copy [template.md](template.md).
