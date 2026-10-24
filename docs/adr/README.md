@@ -21,7 +21,7 @@ supersedes the old one.
 | [0012](0012-single-install-path.md)           | One install path for add and install   | amended by 0013 |
 | [0013](0013-hardening-after-mvp-audit.md)     | Hardening after the MVP audit          | accepted |
 | [0014](0014-zip-cache.md)                     | Cache downloaded zips by SHA-256       | accepted |
-| [0015](0015-comfort-commands.md)              | Comfort commands: search, --no-dev, outdated, update | accepted |
+| [0015](0015-comfort-commands.md)              | Comfort commands: search, --no-dev, outdated, update | amended by 0024 |
 | [0016](0016-cache-commands.md)                | Cache commands                         | accepted |
 | [0017](0017-editor-management.md)            | Editor management: godot-builds, managed and linked editors | accepted |
 | [0018](0018-godot-version-spec.md)            | Godot version spec and local editor choice | accepted |
@@ -30,5 +30,6 @@ supersedes the old one.
 | [0021](0021-build-attestation-instead-of-signing.md) | Build attestation instead of code signing | accepted |
 | [0022](0022-version-string.md)                 | Version string in the binary           | accepted |
 | [0023](0023-package-managers.md)               | Package managers: Homebrew tap and Scoop bucket | accepted |
+| [0024](0024-project-godot-reader-writer.md)   | Read and write project.godot with an own minimal parser | accepted |
 
 Template: copy [template.md](template.md).
