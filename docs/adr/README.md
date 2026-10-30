@@ -33,5 +33,6 @@ supersedes the old one.
 | [0024](0024-project-godot-reader-writer.md)   | Read and write project.godot with an own minimal parser | accepted |
 | [0025](0025-release-list-cache.md)             | Cache the godot-builds release list    | accepted |
 | [0026](0026-godot-shim.md)                     | `godot` shim and the editor outside a project | accepted |
+| [0027](0027-stdout-for-normal-output.md)       | Normal output on stdout                | accepted |
 
 Template: copy [template.md](template.md).
