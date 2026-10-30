@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-10-21
-- Refs: gd#41
+- Refs: [gd#41](https://github.com/godot-services/gd/issues/41)
 
 ## Context
 

@@ -2,7 +2,7 @@
 
 - Status: proposed | accepted | superseded by NNNN
 - Date: YYYY-MM-DD
-- Refs: issues, PRs
+- Refs: [gd#N](https://github.com/godot-services/gd/issues/N) (issues and PRs)
 
 ## Context
 

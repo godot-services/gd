@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-10-21
-- Refs: gd#41
+- Refs: [gd#41](https://github.com/godot-services/gd/issues/41)
 
 ## Context
 
@@ -25,5 +25,5 @@ still want to check that an archive was built from this repository.
 ## Consequences
 
 No accounts, costs or secrets. Users downloading by hand see the OS warnings;
-the package managers of gd#42 avoid most of them. If signing becomes necessary,
+the package managers of [gd#42](https://github.com/godot-services/gd/issues/42) avoid most of them. If signing becomes necessary,
 a new ADR adds it on top of the attestation.

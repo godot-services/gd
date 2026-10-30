@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-10-20
-- Refs: gd#17, gd#35, gd#36, gd#37, gd#38, spec `docs/superpowers/specs/2026-10-20-m2-comfort-commands-design.md`
+- Refs: [gd#17](https://github.com/godot-services/gd/issues/17), [gd#35](https://github.com/godot-services/gd/issues/35), [gd#36](https://github.com/godot-services/gd/issues/36), [gd#37](https://github.com/godot-services/gd/issues/37), [gd#38](https://github.com/godot-services/gd/issues/38), spec `docs/superpowers/specs/2026-10-20-m2-comfort-commands-design.md`
 
 ## Context
 

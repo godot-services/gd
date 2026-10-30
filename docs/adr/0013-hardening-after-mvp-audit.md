@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-10-20
-- Refs: gd#20, gd#21, gd#22, gd#23, gd#24, gd#25
+- Refs: [gd#20](https://github.com/godot-services/gd/issues/20), [gd#21](https://github.com/godot-services/gd/issues/21), [gd#22](https://github.com/godot-services/gd/issues/22), [gd#23](https://github.com/godot-services/gd/issues/23), [gd#24](https://github.com/godot-services/gd/issues/24), [gd#25](https://github.com/godot-services/gd/issues/25)
 - Amends: [0004](0004-lockfile-with-sha256.md), [0008](0008-ownership-of-installed-folders.md), [0010](0010-default-asset-names.md), [0012](0012-single-install-path.md)
 
 ## Context
