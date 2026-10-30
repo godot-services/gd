@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-10-21
-- Refs: gd#65; amends [0016](0016-cache-commands.md) and [0017](0017-editor-management.md)
+- Refs: [gd#65](https://github.com/godot-services/gd/issues/65); amends [0016](0016-cache-commands.md) and [0017](0017-editor-management.md)
 
 ## Context
 

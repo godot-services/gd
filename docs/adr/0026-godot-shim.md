@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-10-21
-- Refs: gd#64; supersedes the "No PATH changes, no shims" point of [0017](0017-editor-management.md)
+- Refs: [gd#64](https://github.com/godot-services/gd/issues/64); supersedes the "No PATH changes, no shims" point of [0017](0017-editor-management.md)
 
 ## Context
 
