@@ -2,14 +2,14 @@
 
 - Status: accepted
 - Date: 2026-10-21
-- Refs: gd#41
+- Refs: [gd#41](https://github.com/godot-services/gd/issues/41)
 
 ## Context
 
 Users need prebuilt `gd` binaries for linux, macOS and windows on amd64 and
 arm64, so they do not need a Go toolchain. Releases v0.1.0–v0.3.0 were created
 by hand together with their tag (`gh release create vX --notes ...`) and have
-hand-written notes. gd#42 will publish to package managers that consume the
+hand-written notes. [gd#42](https://github.com/godot-services/gd/issues/42) will publish to package managers that consume the
 release archives.
 
 ## Decision
@@ -32,7 +32,7 @@ release archives.
   config or a target that does not compile fails the PR, not the tag.
 
 Rejected: a hand-written `go build` matrix. It needs no tool, but more YAML and
-shell, and gd#42 would have to generate formulas and manifests itself, which
+shell, and [gd#42](https://github.com/godot-services/gd/issues/42) would have to generate formulas and manifests itself, which
 GoReleaser does from the same config.
 
 ## Consequences

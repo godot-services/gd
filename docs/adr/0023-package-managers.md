@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-10-21
-- Refs: gd#42, gd#74, builds on [0020](0020-release-builds-with-goreleaser.md)
+- Refs: [gd#42](https://github.com/godot-services/gd/issues/42), [gd#74](https://github.com/godot-services/gd/issues/74), builds on [0020](0020-release-builds-with-goreleaser.md)
 
 ## Context
 
@@ -35,7 +35,7 @@ Homebrew quarantines cask downloads on macOS.
   rewrite the cask and manifest to that version and downgrade users.
 
 Rejected for now: winget (PRs to `microsoft/winget-pkgs` need a fork and a
-manual first review), deb/rpm, AUR and Nix (all in gd#74); a GitHub App instead
+manual first review), deb/rpm, AUR and Nix (all in [gd#74](https://github.com/godot-services/gd/issues/74)); a GitHub App instead
 of the PAT (more setup for two repositories, can replace the PAT later without
 changing the config shape).
 

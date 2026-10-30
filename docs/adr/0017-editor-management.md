@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-10-20
-- Refs: gd#18, gd#43, gd#57, gd#58; see [0018](0018-godot-version-spec.md)
+- Refs: [gd#18](https://github.com/godot-services/gd/issues/18), [gd#43](https://github.com/godot-services/gd/issues/43), [gd#57](https://github.com/godot-services/gd/issues/57), [gd#58](https://github.com/godot-services/gd/issues/58); see [0018](0018-godot-version-spec.md)
 
 ## Context
 
