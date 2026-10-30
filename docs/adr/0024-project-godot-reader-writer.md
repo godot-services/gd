@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-10-21
-- Refs: gd#46, docs/superpowers/specs/2026-10-21-m5-project-settings-design.md, ADR 0015
+- Refs: [gd#46](https://github.com/godot-services/gd/issues/46), docs/superpowers/specs/2026-10-21-m5-project-settings-design.md, ADR 0015
 
 ## Context
 
