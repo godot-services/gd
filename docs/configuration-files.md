@@ -78,7 +78,7 @@ gets the same files. `paths` lists the folders `gd` installed under `addons/`;
 
 Commit both files.
 
-Downloaded zips are cached by SHA-256 in `<user cache dir>/gd/` (see [ADR 0014](adr/0014-zip-cache.md)); `gd cache info` shows it and `gd cache clean` clears it.
+Downloaded zips are cached by SHA-256 in `<user cache dir>/gd/` (see [ADR 0014](adr/0014-zip-cache.md)), and the release list of `gd editor available` in `<user cache dir>/gd/godot-builds-releases.json` for an hour (see [ADR 0025](adr/0025-release-list-cache.md)); `gd cache info` shows both and `gd cache clean` clears them.
 
 # `project.godot`
 

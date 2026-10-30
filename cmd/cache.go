@@ -19,11 +19,11 @@ func newCacheCmd() *cobra.Command {
 		Short: "Show where the cache is and how big it is",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			dir, zips, size, err := cachedZips()
+			dir, files, size, err := cachedFiles()
 			if err != nil {
 				return err
 			}
-			cmd.Printf("%s\n%s, %.1f MB\n", dir, plural(len(zips), "file"), float64(size)/1e6)
+			cmd.Printf("%s\n%s, %.1f MB\n", dir, plural(len(files), "file"), float64(size)/1e6)
 			return nil
 		},
 	})
@@ -33,16 +33,16 @@ func newCacheCmd() *cobra.Command {
 		Short: "Delete all cached downloads",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			_, zips, size, err := cachedZips()
+			_, files, size, err := cachedFiles()
 			if err != nil {
 				return err
 			}
-			for _, zip := range zips {
-				if err := os.Remove(zip); err != nil {
+			for _, f := range files {
+				if err := os.Remove(f); err != nil {
 					return err
 				}
 			}
-			cmd.Printf("removed %s, %.1f MB\n", plural(len(zips), "file"), float64(size)/1e6)
+			cmd.Printf("removed %s, %.1f MB\n", plural(len(files), "file"), float64(size)/1e6)
 			return nil
 		},
 	})
@@ -50,22 +50,26 @@ func newCacheCmd() *cobra.Command {
 	return cmd
 }
 
-// cachedZips lists the *.zip files in the cache dir; only these are ever deleted.
-func cachedZips() (dir string, zips []string, size int64, err error) {
+// cachedFiles lists the *.zip files and the release list in the cache dir; only these are ever deleted.
+func cachedFiles() (dir string, files []string, size int64, err error) {
 	if dir, err = cacheDir(); err != nil {
 		return "", nil, 0, err
 	}
-	if zips, err = filepath.Glob(filepath.Join(dir, "*.zip")); err != nil {
+	if files, err = filepath.Glob(filepath.Join(dir, "*.zip")); err != nil {
 		return "", nil, 0, err
 	}
-	for _, zip := range zips {
-		info, err := os.Stat(zip)
+	releases := filepath.Join(dir, releasesCacheFile)
+	if _, err := os.Stat(releases); err == nil {
+		files = append(files, releases)
+	}
+	for _, f := range files {
+		info, err := os.Stat(f)
 		if err != nil {
 			return "", nil, 0, err
 		}
 		size += info.Size()
 	}
-	return dir, zips, size, nil
+	return dir, files, size, nil
 }
 
 func plural(n int, word string) string {

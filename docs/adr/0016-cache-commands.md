@@ -1,6 +1,6 @@
 # 0016. Cache commands
 
-- Status: accepted
+- Status: amended by [0025](0025-release-list-cache.md)
 - Date: 2026-10-20
 - Refs: [gd#49](https://github.com/godot-services/gd/issues/49), builds on [0014](0014-zip-cache.md)
 

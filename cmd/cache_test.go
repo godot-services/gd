@@ -19,19 +19,21 @@ func TestCacheInfoAndClean(t *testing.T) {
 	}
 	keep := filepath.Join(dir, "notes.txt")
 	os.WriteFile(keep, []byte("not a zip"), 0o644)
+	releases := filepath.Join(dir, releasesCacheFile)
+	os.WriteFile(releases, []byte("{}"), 0o644)
 
 	out, err := runOut(t, lib, "cache", "info")
-	if err != nil || !strings.Contains(out, dir) || !strings.Contains(out, "1 file") {
+	if err != nil || !strings.Contains(out, dir) || !strings.Contains(out, "2 files") {
 		t.Fatal(out, err)
 	}
 
 	out, err = runOut(t, lib, "cache", "clean")
-	if err != nil || !strings.Contains(out, "removed 1 file") {
+	if err != nil || !strings.Contains(out, "removed 2 files") {
 		t.Fatal(out, err)
 	}
 	zips, _ := filepath.Glob(filepath.Join(dir, "*.zip"))
-	if len(zips) != 0 || !exists(keep) {
-		t.Fatalf("zips left %v, other file kept %v", zips, exists(keep))
+	if len(zips) != 0 || exists(releases) || !exists(keep) {
+		t.Fatalf("zips left %v, release list left %v, other file kept %v", zips, exists(releases), exists(keep))
 	}
 }
 
